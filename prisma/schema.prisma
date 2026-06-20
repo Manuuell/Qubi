@@ -1,0 +1,100 @@
+// Esquema de datos de Qubi.
+// Docs: https://pris.ly/d/prisma-schema
+// La URL de conexión se configura en prisma.config.ts (lee DATABASE_URL del .env).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Enums ────────────────────────────────────────────────────────────────
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  GUEST
+}
+
+enum PageType {
+  PAGE
+  DATABASE
+}
+
+// ── Usuarios ─────────────────────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String?
+  image          String?
+  hashedPassword String? // login con email/contraseña (Fase 1)
+  emailVerified  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  memberships     WorkspaceMember[]
+  ownedWorkspaces Workspace[]       @relation("WorkspaceOwner")
+  createdPages    Page[]            @relation("PageCreatedBy")
+}
+
+// ── Workspaces (espacios de trabajo) ─────────────────────────────────────
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  icon      String?
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner   User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members WorkspaceMember[]
+  pages   Page[]
+
+  @@index([ownerId])
+}
+
+// Tabla puente usuario <-> workspace (con su rol).
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(MEMBER)
+  createdAt   DateTime      @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+// ── Páginas (contenido; anidables en árbol) ──────────────────────────────
+
+model Page {
+  id          String    @id @default(cuid())
+  workspaceId String
+  parentId    String? // null = página de primer nivel
+  title       String    @default("")
+  icon        String?
+  cover       String?
+  type        PageType  @default(PAGE)
+  archivedAt  DateTime? // papelera (soft-delete)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent    Page?     @relation("PageTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Page[]    @relation("PageTree")
+  createdBy User?     @relation("PageCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([parentId])
+}

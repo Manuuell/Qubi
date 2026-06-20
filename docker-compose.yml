@@ -1,0 +1,55 @@
+# Infraestructura de desarrollo local de Qubi.
+# Levanta: PostgreSQL (datos), Redis (presencia/caché) y MinIO (archivos).
+# Uso: docker compose up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: qubi-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: qubi
+      POSTGRES_PASSWORD: qubi_dev_password
+      POSTGRES_DB: qubi
+    ports:
+      - "5433:5432" # 5433 en el host para no chocar con otros Postgres locales
+    volumes:
+      - qubi_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qubi -d qubi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: qubi-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - qubi_redisdata:/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: qubi-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: qubi
+      MINIO_ROOT_PASSWORD: qubi_dev_password
+    ports:
+      - "9000:9000" # API S3
+      - "9001:9001" # Consola web
+    volumes:
+      - qubi_miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  qubi_pgdata:
+  qubi_redisdata:
+  qubi_miniodata:

@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Qubi
 
-## Getting Started
+Plataforma web tipo Notion para gestión de proyectos y notas — **gratuita**, con cuentas
+propias e inicio de sesión con Google, autoalojada en un VPS.
 
-First, run the development server:
+El plan de trabajo completo y el roadmap por fases está en [PLAN.md](./PLAN.md).
+
+## Stack
+
+- **Next.js 16** (App Router) + **React 19** + **TypeScript**
+- **PostgreSQL** + **Prisma 7** (con driver adapter `@prisma/adapter-pg`)
+- **Tailwind CSS v4** + **shadcn/ui**
+- **Redis** (presencia/caché) y **MinIO** (almacenamiento de archivos S3) en local
+- Calidad: ESLint + Prettier + Husky + lint-staged
+
+## Requisitos
+
+- Node.js 22+ (probado con Node 26)
+- Docker (para la base de datos, Redis y MinIO en local)
+
+## Puesta en marcha (desarrollo)
 
 ```bash
+# 1. Instalar dependencias
+npm install
+
+# 2. Crear el archivo de entorno
+cp .env.example .env
+
+# 3. Levantar la infraestructura local (Postgres, Redis, MinIO)
+docker compose up -d
+
+# 4. Aplicar las migraciones de la base de datos
+npm run db:migrate
+
+# 5. Arrancar la app
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> Postgres se expone en el puerto **5433** del host (para no chocar con otros Postgres
+> locales). La consola de MinIO está en [http://localhost:9001](http://localhost:9001)
+> (usuario/clave: `qubi` / `qubi_dev_password`).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+| Script                | Descripción                  |
+| --------------------- | ---------------------------- |
+| `npm run dev`         | Servidor de desarrollo       |
+| `npm run build`       | Build de producción          |
+| `npm run start`       | Servir el build              |
+| `npm run lint`        | ESLint                       |
+| `npm run format`      | Formatear con Prettier       |
+| `npm run typecheck`   | Comprobar tipos (tsc)        |
+| `npm run db:migrate`  | Crear/aplicar migraciones    |
+| `npm run db:generate` | Generar el cliente de Prisma |
+| `npm run db:studio`   | Abrir Prisma Studio          |
 
-To learn more about Next.js, take a look at the following resources:
+## Estructura
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+├─ app/          # Rutas (App Router)
+├─ components/   # UI (shadcn + propios)
+├─ features/     # Lógica por dominio (editor, workspace, auth, ...)
+├─ lib/          # db (prisma), utils
+├─ server/       # Server actions y servicios
+└─ generated/    # Cliente Prisma (generado, no se commitea)
+prisma/          # schema.prisma y migraciones
+docker-compose.yml
+```
