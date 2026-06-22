@@ -33,11 +33,17 @@ docker compose up -d
 # 4. Aplicar las migraciones de la base de datos
 npm run db:migrate
 
-# 5. Arrancar la app
+# 5. Arrancar la app (en una terminal)
 npm run dev
+
+# 6. Arrancar el servidor de colaboración en tiempo real (en OTRA terminal)
+npm run collab
 ```
 
 Abre [http://localhost:3000](http://localhost:3000).
+
+> El editor de bloques usa colaboración en tiempo real (Yjs), así que necesita el
+> servidor `npm run collab` (Hocuspocus, ws://localhost:1234) corriendo en paralelo.
 
 > Postgres se expone en el puerto **5433** del host (para no chocar con otros Postgres
 > locales). La consola de MinIO está en [http://localhost:9001](http://localhost:9001)

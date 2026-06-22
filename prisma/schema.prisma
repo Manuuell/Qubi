@@ -40,6 +40,49 @@ model User {
   memberships     WorkspaceMember[]
   ownedWorkspaces Workspace[]       @relation("WorkspaceOwner")
   createdPages    Page[]            @relation("PageCreatedBy")
+  accounts        Account[]
+  sessions        Session[]
+}
+
+// ── Auth.js (NextAuth) ───────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
 
 // ── Workspaces (espacios de trabajo) ─────────────────────────────────────
@@ -81,10 +124,14 @@ model Page {
   id          String    @id @default(cuid())
   workspaceId String
   parentId    String? // null = página de primer nivel
+  databaseId  String? // si está, esta página es una FILA de esa base de datos
   title       String    @default("")
   icon        String?
   cover       String?
   type        PageType  @default(PAGE)
+  content     Json? // documento de bloques (JSON; legado pre-Yjs)
+  yjsState    Bytes? // documento Yjs (binario) para edición colaborativa en tiempo real
+  isPublic    Boolean   @default(false) // enlace público de solo lectura
   archivedAt  DateTime? // papelera (soft-delete)
   createdById String?
   createdAt   DateTime  @default(now())
@@ -95,6 +142,51 @@ model Page {
   children  Page[]    @relation("PageTree")
   createdBy User?     @relation("PageCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
+  // Bases de datos tipo Notion
+  database           Page?              @relation("DatabaseRows", fields: [databaseId], references: [id], onDelete: Cascade)
+  rows               Page[]             @relation("DatabaseRows")
+  databaseProperties DatabaseProperty[] @relation("DatabaseProperties")
+  propertyValues     PropertyValue[]    @relation("RowValues")
+
   @@index([workspaceId])
   @@index([parentId])
+  @@index([databaseId])
+}
+
+enum PropertyType {
+  TEXT
+  NUMBER
+  SELECT
+  DATE
+  CHECKBOX
+}
+
+// Columna de una base de datos (la base de datos es una Page con type=DATABASE).
+model DatabaseProperty {
+  id         String       @id @default(cuid())
+  databaseId String
+  name       String
+  type       PropertyType @default(TEXT)
+  position   Int          @default(0)
+  config     Json? // opciones de SELECT, formato, etc.
+  createdAt  DateTime     @default(now())
+
+  database Page            @relation("DatabaseProperties", fields: [databaseId], references: [id], onDelete: Cascade)
+  values   PropertyValue[]
+
+  @@index([databaseId])
+}
+
+// Valor de una propiedad para una fila concreta.
+model PropertyValue {
+  id         String @id @default(cuid())
+  pageId     String // la fila (Page)
+  propertyId String
+  value      Json?
+
+  page     Page             @relation("RowValues", fields: [pageId], references: [id], onDelete: Cascade)
+  property DatabaseProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, propertyId])
+  @@index([pageId])
 }
