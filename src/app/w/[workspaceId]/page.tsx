@@ -9,7 +9,13 @@ export default async function WorkspaceHome({
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-      <h2 className="text-lg font-medium">Tu espacio está listo</h2>
+      <div
+        aria-hidden
+        className="chess-pattern border-border mx-auto mb-1 size-10 rounded-md border"
+      />
+      <h2 className="font-display text-2xl font-semibold">
+        Tu espacio está listo
+      </h2>
       <p className="text-muted-foreground max-w-sm text-sm">
         Crea tu primera página o elige una en la barra lateral para empezar.
       </p>

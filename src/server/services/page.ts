@@ -164,3 +164,54 @@ export function getPublicPage(pageId: string) {
     where: { id: pageId, isPublic: true, archivedAt: null },
   });
 }
+
+// ── Búsqueda ─────────────────────────────────────────────────────────────────
+
+// Busca páginas por título en los workspaces del usuario (excluye filas y papelera).
+export async function searchPages(userId: string, query: string) {
+  const q = query.trim();
+  if (!q) return [];
+  return prisma.page.findMany({
+    where: {
+      archivedAt: null,
+      databaseId: null,
+      workspace: { members: { some: { userId } } },
+      title: { contains: q, mode: "insensitive" },
+    },
+    select: { id: true, title: true, type: true, workspaceId: true },
+    orderBy: { updatedAt: "desc" },
+    take: 20,
+  });
+}
+
+// ── Favoritos ────────────────────────────────────────────────────────────────
+
+export async function toggleFavorite(userId: string, pageId: string) {
+  const existing = await prisma.favorite.findUnique({
+    where: { userId_pageId: { userId, pageId } },
+  });
+  if (existing) {
+    await prisma.favorite.delete({ where: { id: existing.id } });
+    return false;
+  }
+  await prisma.favorite.create({ data: { userId, pageId } });
+  return true;
+}
+
+export async function isPageFavorite(userId: string, pageId: string) {
+  const fav = await prisma.favorite.findUnique({
+    where: { userId_pageId: { userId, pageId } },
+  });
+  return Boolean(fav);
+}
+
+export async function getFavoritePages(userId: string, workspaceId: string) {
+  const favs = await prisma.favorite.findMany({
+    where: { userId, page: { workspaceId, archivedAt: null } },
+    select: {
+      page: { select: { id: true, title: true, icon: true, type: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  return favs.map((f) => f.page);
+}

@@ -26,7 +26,7 @@ export function PageTitle({
       onChange={(e) => setTitle(e.target.value)}
       onBlur={save}
       placeholder="Sin título"
-      className="placeholder:text-muted-foreground/40 w-full bg-transparent text-4xl font-bold tracking-tight outline-none"
+      className="placeholder:text-muted-foreground/40 font-display w-full bg-transparent text-4xl font-bold tracking-tight outline-none"
     />
   );
 }

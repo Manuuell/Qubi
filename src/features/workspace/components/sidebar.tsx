@@ -5,10 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ChevronRight,
+  CircleDot,
   Database,
   FileText,
   LogOut,
   Plus,
+  Star,
   Table,
   Trash2,
   Users,
@@ -18,6 +20,9 @@ import type { PageTreeItem } from "@/server/services/page";
 import { archivePageAction, createPageAction } from "@/server/actions/page";
 import { createDatabaseAction } from "@/server/actions/database";
 import { logoutAction } from "@/server/actions/auth";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { CommandPalette } from "@/features/search/components/command-palette";
+import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
 
 type TreeNode = PageTreeItem & { children: TreeNode[] };
 
@@ -37,11 +42,15 @@ function buildTree(pages: PageTreeItem[]): TreeNode[] {
 
 export function Sidebar({
   workspace,
+  workspaces,
   pages,
+  favorites,
   userName,
 }: {
   workspace: { id: string; name: string; icon: string | null };
+  workspaces: { id: string; name: string; icon: string | null }[];
   pages: PageTreeItem[];
+  favorites: { id: string; title: string; type: "PAGE" | "DATABASE" }[];
   userName: string;
 }) {
   const tree = buildTree(pages);
@@ -49,14 +58,10 @@ export function Sidebar({
 
   return (
     <aside className="bg-muted/30 flex h-full w-64 shrink-0 flex-col border-r">
-      <div className="flex items-center gap-2 px-3 py-3 text-sm font-semibold">
-        <span className="bg-primary/10 grid size-6 place-items-center rounded text-xs">
-          {workspace.icon ?? "Q"}
-        </span>
-        <span className="truncate">{workspace.name}</span>
-      </div>
+      <WorkspaceSwitcher current={workspace} workspaces={workspaces} />
 
-      <div className="px-2">
+      <div className="mt-1 px-2">
+        <CommandPalette />
         <button
           onClick={() =>
             startTransition(() =>
@@ -84,6 +89,27 @@ export function Sidebar({
       </div>
 
       <nav className="mt-1 flex-1 overflow-y-auto px-2 pb-4">
+        {favorites.length > 0 && (
+          <div className="mb-3">
+            <p className="text-muted-foreground px-2 py-1 text-[11px] font-medium tracking-wide uppercase">
+              Favoritos
+            </p>
+            {favorites.map((f) => (
+              <Link
+                key={f.id}
+                href={`/w/${workspace.id}/${f.id}`}
+                className="hover:bg-accent flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm"
+              >
+                <Star className="text-gold size-3.5 shrink-0 fill-current" />
+                <span className="truncate">{f.title || "Sin título"}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        <p className="text-muted-foreground px-2 py-1 text-[11px] font-medium tracking-wide uppercase">
+          Páginas
+        </p>
         {tree.length === 0 ? (
           <p className="text-muted-foreground px-2 py-4 text-xs">
             Sin páginas todavía.
@@ -101,6 +127,13 @@ export function Sidebar({
       </nav>
 
       <div className="mt-auto border-t p-2 text-sm">
+        <Link
+          href={`/w/${workspace.id}/issues`}
+          className="text-muted-foreground hover:bg-accent hover:text-foreground flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors"
+        >
+          <CircleDot className="size-4" />
+          Issues
+        </Link>
         <Link
           href={`/w/${workspace.id}/members`}
           className="text-muted-foreground hover:bg-accent hover:text-foreground flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors"
@@ -121,6 +154,7 @@ export function Sidebar({
             {userName.charAt(0).toUpperCase()}
           </span>
           <span className="min-w-0 flex-1 truncate text-xs">{userName}</span>
+          <ThemeToggle />
           <form action={logoutAction}>
             <button
               type="submit"

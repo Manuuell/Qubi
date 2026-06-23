@@ -4,6 +4,7 @@ import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 
 import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import {
   CommentsExtension,
@@ -63,6 +64,7 @@ export default function BlockNoteEditor({
   // El proveedor se crea en un efecto (seguro ante el doble montaje de
   // React StrictMode en dev): si se destruye, el efecto crea uno nuevo.
   const [provider, setProvider] = useState<HocuspocusProvider | null>(null);
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     const p = new HocuspocusProvider({ url: COLLAB_URL, name: pageId });
@@ -104,7 +106,10 @@ export default function BlockNoteEditor({
   }
 
   return (
-    <BlockNoteView editor={editor} theme="light">
+    <BlockNoteView
+      editor={editor}
+      theme={resolvedTheme === "dark" ? "dark" : "light"}
+    >
       {/* Menú de menciones: escribe "@" para mencionar a un miembro. */}
       <SuggestionMenuController
         triggerCharacter="@"

@@ -25,8 +25,14 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
 
   return (
     <div className="bg-background w-full max-w-sm space-y-6 rounded-xl border p-8 shadow-sm">
-      <div className="space-y-1 text-center">
-        <div className="text-2xl font-bold tracking-tight">Qubi</div>
+      <div className="space-y-2 text-center">
+        <div
+          aria-hidden
+          className="chess-pattern border-border mx-auto size-9 rounded-md border"
+        />
+        <div className="font-display text-3xl font-bold tracking-tight">
+          Qubi
+        </div>
         <p className="text-muted-foreground text-sm">
           {isLogin ? "Inicia sesión en tu espacio" : "Crea tu cuenta gratis"}
         </p>

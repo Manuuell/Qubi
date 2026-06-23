@@ -24,7 +24,7 @@ export default async function PublicPage({
       <div className="text-muted-foreground mb-3 text-xs">
         Vista pública · solo lectura · hecho con Qubi
       </div>
-      <h1 className="text-4xl font-bold tracking-tight">
+      <h1 className="font-display text-4xl font-bold tracking-tight">
         {page.title || "Sin título"}
       </h1>
 

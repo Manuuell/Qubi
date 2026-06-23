@@ -82,3 +82,12 @@ export async function setPagePublicAction(input: {
   await pageService.setPagePublic(input.pageId, user.id, input.isPublic);
   revalidatePath(`/w/${input.workspaceId}/${input.pageId}`);
 }
+
+export async function toggleFavoriteAction(input: {
+  pageId: string;
+  workspaceId: string;
+}) {
+  const user = await getCurrentUser();
+  await pageService.toggleFavorite(user.id, input.pageId);
+  revalidatePath(`/w/${input.workspaceId}`);
+}

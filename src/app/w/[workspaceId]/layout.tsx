@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { getWorkspace } from "@/server/services/workspace";
-import { getPageTree } from "@/server/services/page";
+import { getWorkspace, getUserWorkspaces } from "@/server/services/workspace";
+import { getPageTree, getFavoritePages } from "@/server/services/page";
 import { Sidebar } from "@/features/workspace/components/sidebar";
 
 export default async function WorkspaceLayout({
@@ -17,7 +17,11 @@ export default async function WorkspaceLayout({
   const workspace = await getWorkspace(workspaceId, user.id);
   if (!workspace) notFound();
 
-  const pages = await getPageTree(workspaceId);
+  const [pages, workspaces, favorites] = await Promise.all([
+    getPageTree(workspaceId),
+    getUserWorkspaces(user.id),
+    getFavoritePages(user.id, workspaceId),
+  ]);
 
   return (
     <div className="flex h-screen">
@@ -27,7 +31,17 @@ export default async function WorkspaceLayout({
           name: workspace.name,
           icon: workspace.icon,
         }}
+        workspaces={workspaces.map((w) => ({
+          id: w.id,
+          name: w.name,
+          icon: w.icon,
+        }))}
         pages={pages}
+        favorites={favorites.map((p) => ({
+          id: p.id,
+          title: p.title,
+          type: p.type,
+        }))}
         userName={user.name ?? user.email}
       />
       <main className="flex-1 overflow-y-auto">{children}</main>
