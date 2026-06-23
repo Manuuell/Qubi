@@ -47,16 +47,24 @@ de colaboración (quitando `/collab`) y los archivos de MinIO (quitando `/files`
 server {
     server_name qubi.tudominio.com;
 
+    # La subida de imágenes pasa por la app: permite cuerpos grandes.
+    client_max_body_size 50M;
+
     location / {
         proxy_pass http://127.0.0.1:3600;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
     }
 
-    # Colaboración en tiempo real (WebSocket). La barra final quita el prefijo.
-    location /collab/ {
-        proxy_pass http://127.0.0.1:1234/;
+    # Colaboración en tiempo real (WebSocket Hocuspocus). NO se reescribe la ruta:
+    # el provider v4 conecta a la URL tal cual y manda el nombre del doc por protocolo.
+    location /collab {
+        proxy_pass http://127.0.0.1:1234;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -64,7 +72,7 @@ server {
         proxy_read_timeout 86400;
     }
 
-    # Archivos públicos (MinIO).
+    # Archivos públicos (MinIO). La barra final quita el prefijo /files.
     location /files/ {
         proxy_pass http://127.0.0.1:9000/;
         proxy_set_header Host $host;
