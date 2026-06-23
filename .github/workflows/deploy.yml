@@ -1,0 +1,31 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+
+# Evita despliegues solapados si llegan varios commits seguidos.
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Desplegar en el VPS por SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/qubi
+            git fetch origin main
+            git reset --hard origin/main
+            # Construye y levanta; el servicio "migrate" aplica las migraciones.
+            docker compose -f docker-compose.prod.yml up -d --build
+            # Limpia imágenes viejas para no llenar el disco.
+            docker image prune -f
+            docker compose -f docker-compose.prod.yml ps

@@ -1,0 +1,88 @@
+# ============================================================
+# Qubi — orquestación de PRODUCCIÓN en el VPS.
+#   postgres + minio (datos)  ·  migrate (one-shot)  ·  app + collab
+# app y collab escuchan SOLO en localhost; el reverse proxy del host
+# (nginx/Caddy) los expone con HTTPS. Variables en .env (NO se commitea).
+# Uso:  docker compose -f docker-compose.prod.yml up -d --build
+# ============================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - qubi_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+    volumes:
+      - qubi_miniodata:/data
+    # API de S3 sólo en localhost; el host la expone (p. ej. /files) con HTTPS.
+    ports:
+      - "127.0.0.1:9000:9000"
+
+  # Aplica las migraciones de Prisma y termina (corre en cada despliegue).
+  migrate:
+    build:
+      context: .
+      target: tooling
+    command: npx prisma migrate deploy
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+      args:
+        # Se incrusta en el bundle del navegador durante el build.
+        NEXT_PUBLIC_COLLAB_URL: ${NEXT_PUBLIC_COLLAB_URL}
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:3600:3000"
+
+  # Servidor de colaboración en tiempo real (Yjs / Hocuspocus).
+  collab:
+    build:
+      context: .
+      target: tooling
+    command: npx tsx collab/server.ts
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:1234:1234"
+
+volumes:
+  qubi_pgdata:
+  qubi_miniodata:

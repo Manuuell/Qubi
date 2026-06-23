@@ -9,6 +9,9 @@ import {
 const endpoint = process.env.S3_ENDPOINT ?? "http://localhost:9000";
 const region = process.env.S3_REGION ?? "us-east-1";
 const bucket = process.env.S3_BUCKET ?? "qubi-uploads";
+// URL pública (de cara al navegador) para servir los archivos. En producción
+// suele ser un dominio detrás del reverse proxy; en local, el propio endpoint.
+const publicBase = process.env.S3_PUBLIC_URL ?? endpoint;
 
 // Cliente S3 apuntando a MinIO (path-style obligatorio para MinIO).
 export const s3 = new S3Client({
@@ -71,5 +74,5 @@ export async function uploadFile(file: File) {
     }),
   );
 
-  return `${endpoint}/${bucket}/${key}`;
+  return `${publicBase}/${bucket}/${key}`;
 }
