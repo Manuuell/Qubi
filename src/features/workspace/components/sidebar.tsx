@@ -4,8 +4,9 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  CalendarCheck,
   ChevronRight,
-  CircleDot,
+  Clock,
   Database,
   FileText,
   LogOut,
@@ -17,11 +18,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PageTreeItem } from "@/server/services/page";
+import type { ProjectListItem } from "@/server/services/project";
 import { archivePageAction, createPageAction } from "@/server/actions/page";
 import { createDatabaseAction } from "@/server/actions/database";
 import { logoutAction } from "@/server/actions/auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommandPalette } from "@/features/search/components/command-palette";
+import { CreateProjectButton } from "@/features/project/components/create-project-button";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
 
 type TreeNode = PageTreeItem & { children: TreeNode[] };
@@ -44,16 +47,19 @@ export function Sidebar({
   workspace,
   workspaces,
   pages,
+  projects,
   favorites,
   userName,
 }: {
   workspace: { id: string; name: string; icon: string | null };
   workspaces: { id: string; name: string; icon: string | null }[];
   pages: PageTreeItem[];
+  projects: ProjectListItem[];
   favorites: { id: string; title: string; type: "PAGE" | "DATABASE" }[];
   userName: string;
 }) {
   const tree = buildTree(pages);
+  const pathname = usePathname();
   const [pending, startTransition] = useTransition();
 
   return (
@@ -62,6 +68,7 @@ export function Sidebar({
 
       <div className="mt-1 px-2">
         <CommandPalette />
+        <CreateProjectButton workspaceId={workspace.id} />
         <button
           onClick={() =>
             startTransition(() =>
@@ -89,6 +96,48 @@ export function Sidebar({
       </div>
 
       <nav className="mt-1 flex-1 overflow-y-auto px-2 pb-4">
+        <Link
+          href={`/w/${workspace.id}/agenda`}
+          className={cn(
+            "hover:bg-accent flex items-center gap-2 rounded-md px-2 py-1.5 text-sm",
+            pathname === `/w/${workspace.id}/agenda` && "bg-accent",
+          )}
+        >
+          <CalendarCheck className="size-4" />
+          Mi agenda
+        </Link>
+
+        <div className="mt-3 mb-3">
+          <p className="text-muted-foreground px-2 py-1 text-[11px] font-medium tracking-wide uppercase">
+            Proyectos
+          </p>
+          {projects.length === 0 ? (
+            <p className="text-muted-foreground px-2 py-2 text-xs">
+              Sin proyectos todavía.
+            </p>
+          ) : (
+            projects.map((p) => {
+              const href = `/w/${workspace.id}/projects/${p.id}`;
+              return (
+                <Link
+                  key={p.id}
+                  href={href}
+                  className={cn(
+                    "hover:bg-accent flex items-center gap-2 rounded-md px-2 py-1.5 text-sm",
+                    pathname === href && "bg-accent",
+                  )}
+                >
+                  <span
+                    className="size-2.5 shrink-0 rounded-full"
+                    style={{ background: p.color ?? "#888888" }}
+                  />
+                  <span className="truncate">{p.name || "Sin nombre"}</span>
+                </Link>
+              );
+            })
+          )}
+        </div>
+
         {favorites.length > 0 && (
           <div className="mb-3">
             <p className="text-muted-foreground px-2 py-1 text-[11px] font-medium tracking-wide uppercase">
@@ -128,11 +177,11 @@ export function Sidebar({
 
       <div className="mt-auto border-t p-2 text-sm">
         <Link
-          href={`/w/${workspace.id}/issues`}
+          href={`/w/${workspace.id}/hours`}
           className="text-muted-foreground hover:bg-accent hover:text-foreground flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors"
         >
-          <CircleDot className="size-4" />
-          Issues
+          <Clock className="size-4" />
+          Registro de horas
         </Link>
         <Link
           href={`/w/${workspace.id}/members`}

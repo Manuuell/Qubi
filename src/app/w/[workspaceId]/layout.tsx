@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getWorkspace, getUserWorkspaces } from "@/server/services/workspace";
 import { getPageTree, getFavoritePages } from "@/server/services/page";
+import { listProjects } from "@/server/services/project";
 import { Sidebar } from "@/features/workspace/components/sidebar";
 
 export default async function WorkspaceLayout({
@@ -17,10 +18,11 @@ export default async function WorkspaceLayout({
   const workspace = await getWorkspace(workspaceId, user.id);
   if (!workspace) notFound();
 
-  const [pages, workspaces, favorites] = await Promise.all([
+  const [pages, workspaces, favorites, projects] = await Promise.all([
     getPageTree(workspaceId),
     getUserWorkspaces(user.id),
     getFavoritePages(user.id, workspaceId),
+    listProjects(workspaceId),
   ]);
 
   return (
@@ -37,6 +39,7 @@ export default async function WorkspaceLayout({
           icon: w.icon,
         }))}
         pages={pages}
+        projects={projects}
         favorites={favorites.map((p) => ({
           id: p.id,
           title: p.title,

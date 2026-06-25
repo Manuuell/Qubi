@@ -2,16 +2,16 @@
 
 import { useRef, useTransition, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { addIssueCommentAction } from "@/server/actions/issue";
+import { addTaskCommentAction } from "@/server/actions/task";
 
-export function IssueCommentForm({
-  issueId,
+export function TaskCommentForm({
+  taskId,
   workspaceId,
-  number,
+  projectId,
 }: {
-  issueId: string;
+  taskId: string;
   workspaceId: string;
-  number: number;
+  projectId: string;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [pending, startTransition] = useTransition();
@@ -21,7 +21,7 @@ export function IssueCommentForm({
     const body = ref.current?.value ?? "";
     if (!body.trim()) return;
     startTransition(async () => {
-      await addIssueCommentAction({ issueId, workspaceId, number, body });
+      await addTaskCommentAction({ taskId, workspaceId, projectId, body });
       if (ref.current) ref.current.value = "";
     });
   }
