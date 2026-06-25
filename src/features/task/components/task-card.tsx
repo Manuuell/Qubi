@@ -9,6 +9,7 @@ import {
   initials,
 } from "@/features/task/labels";
 import { TaskStatusSelect } from "./task-status-select";
+import { TaskCardDescription } from "./task-card-description";
 
 export function TaskCard({
   task,
@@ -50,6 +51,8 @@ export function TaskCard({
       >
         {task.title}
       </Link>
+
+      {task.body.trim() && <TaskCardDescription body={task.body.trim()} />}
 
       <div className="text-muted-foreground mt-2 flex items-center gap-2 text-xs">
         {task.assignee ? (

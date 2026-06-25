@@ -108,7 +108,7 @@ export function TaskCalendar({
             {noDate.map((t) => (
               <Link
                 key={t.id}
-                href={`/w/${workspaceId}/issues/${t.number}`}
+                href={`/w/${workspaceId}/tasks/${t.number}`}
                 className="bg-muted hover:bg-accent flex items-center gap-1 rounded px-2 py-1 text-xs"
               >
                 <span

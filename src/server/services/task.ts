@@ -23,6 +23,7 @@ export type TaskCard = {
   id: string;
   number: number;
   title: string;
+  body: string;
   status: IssueStatus;
   priority: Priority;
   dueDate: Date | null;
@@ -46,6 +47,7 @@ export async function listProjectTasks(
       id: true,
       number: true,
       title: true,
+      body: true,
       status: true,
       priority: true,
       dueDate: true,
