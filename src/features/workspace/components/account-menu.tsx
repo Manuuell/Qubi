@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, LogOut, MoreHorizontal, Plus, X } from "lucide-react";
+import Link from "next/link";
+import { Check, KeyRound, LogOut, MoreHorizontal, Plus, X } from "lucide-react";
 import { logoutAction } from "@/server/actions/auth";
 import {
   prepareAddAccountAction,
@@ -110,6 +111,14 @@ export function AccountMenu({
 
             <div className="my-1 border-t" />
 
+            <Link
+              href="/account"
+              onClick={close}
+              className="hover:bg-accent flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm"
+            >
+              <KeyRound className="size-4" />
+              Cambiar contraseña
+            </Link>
             <form action={prepareAddAccountAction}>
               <button
                 type="submit"

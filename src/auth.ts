@@ -34,6 +34,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const ok = await bcrypt.compare(password, user.hashedPassword);
         if (!ok) return null;
 
+        // Bloquea el acceso hasta confirmar el correo (ver registro/verify).
+        if (!user.emailVerified) return null;
+
         return {
           id: user.id,
           name: user.name,
