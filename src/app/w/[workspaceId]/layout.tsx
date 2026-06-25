@@ -32,11 +32,13 @@ export default async function WorkspaceLayout({
           id: workspace.id,
           name: workspace.name,
           icon: workspace.icon,
+          isOwner: workspace.ownerId === user.id,
         }}
         workspaces={workspaces.map((w) => ({
           id: w.id,
           name: w.name,
           icon: w.icon,
+          isOwner: w.ownerId === user.id,
         }))}
         pages={pages}
         projects={projects}
@@ -46,6 +48,7 @@ export default async function WorkspaceLayout({
           type: p.type,
         }))}
         userName={user.name ?? user.email}
+        userEmail={user.email}
       />
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>

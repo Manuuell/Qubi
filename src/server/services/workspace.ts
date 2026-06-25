@@ -26,6 +26,38 @@ export function getWorkspace(workspaceId: string, userId: string) {
   });
 }
 
+// Solo el propietario puede renombrar o eliminar el espacio.
+async function assertWorkspaceOwner(workspaceId: string, userId: string) {
+  const ws = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    select: { ownerId: true },
+  });
+  if (!ws) throw new Error("Espacio no encontrado");
+  if (ws.ownerId !== userId) {
+    throw new Error("Solo el propietario puede modificar este espacio");
+  }
+}
+
+export async function renameWorkspace(
+  workspaceId: string,
+  userId: string,
+  name: string,
+) {
+  await assertWorkspaceOwner(workspaceId, userId);
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("El nombre no puede estar vacío");
+  return prisma.workspace.update({
+    where: { id: workspaceId },
+    data: { name: trimmed },
+  });
+}
+
+// Elimina el espacio y, en cascada, sus miembros, proyectos, tareas y páginas.
+export async function deleteWorkspace(workspaceId: string, userId: string) {
+  await assertWorkspaceOwner(workspaceId, userId);
+  return prisma.workspace.delete({ where: { id: workspaceId } });
+}
+
 export function createWorkspace(userId: string, name: string) {
   return prisma.workspace.create({
     data: {

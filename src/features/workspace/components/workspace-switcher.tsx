@@ -2,10 +2,14 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
-import { createWorkspaceAction } from "@/server/actions/workspace";
+import { Check, ChevronsUpDown, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  createWorkspaceAction,
+  renameWorkspaceAction,
+  deleteWorkspaceAction,
+} from "@/server/actions/workspace";
 
-type Ws = { id: string; name: string; icon: string | null };
+type Ws = { id: string; name: string; icon: string | null; isOwner: boolean };
 
 export function WorkspaceSwitcher({
   current,
@@ -23,6 +27,30 @@ export function WorkspaceSwitcher({
       const name = window.prompt("Nombre del nuevo espacio:");
       if (name?.trim()) {
         startTransition(() => createWorkspaceAction({ name: name.trim() }));
+      }
+    }, 0);
+  }
+
+  function renameWorkspace(w: Ws) {
+    setOpen(false);
+    setTimeout(() => {
+      const name = window.prompt("Nuevo nombre del espacio:", w.name);
+      if (name?.trim() && name.trim() !== w.name) {
+        startTransition(() =>
+          renameWorkspaceAction({ workspaceId: w.id, name: name.trim() }),
+        );
+      }
+    }, 0);
+  }
+
+  function deleteWorkspace(w: Ws) {
+    setOpen(false);
+    setTimeout(() => {
+      const ok = window.confirm(
+        `¿Eliminar el espacio "${w.name}"?\n\nSe borrarán también sus proyectos, tareas, horas y páginas. Esta acción no se puede deshacer.`,
+      );
+      if (ok) {
+        startTransition(() => deleteWorkspaceAction({ workspaceId: w.id }));
       }
     }, 0);
   }
@@ -48,20 +76,44 @@ export function WorkspaceSwitcher({
               Tus espacios
             </p>
             {workspaces.map((w) => (
-              <Link
+              <div
                 key={w.id}
-                href={`/w/${w.id}`}
-                onClick={() => setOpen(false)}
-                className="hover:bg-accent flex items-center gap-2 rounded px-2 py-1.5 text-sm"
+                className="group hover:bg-accent flex items-center gap-1 rounded pr-1"
               >
-                <span className="bg-primary/10 grid size-5 shrink-0 place-items-center rounded text-[10px]">
-                  {w.icon ?? "Q"}
-                </span>
-                <span className="min-w-0 truncate">{w.name}</span>
-                {w.id === current.id && (
-                  <Check className="text-primary ml-auto size-4 shrink-0" />
+                <Link
+                  href={`/w/${w.id}`}
+                  onClick={() => setOpen(false)}
+                  className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-sm"
+                >
+                  <span className="bg-primary/10 grid size-5 shrink-0 place-items-center rounded text-[10px]">
+                    {w.icon ?? "Q"}
+                  </span>
+                  <span className="min-w-0 truncate">{w.name}</span>
+                  {w.id === current.id && (
+                    <Check className="text-primary ml-auto size-4 shrink-0" />
+                  )}
+                </Link>
+                {w.isOwner && (
+                  <>
+                    <button
+                      onClick={() => renameWorkspace(w)}
+                      disabled={pending}
+                      aria-label={`Renombrar ${w.name}`}
+                      className="text-muted-foreground hover:bg-accent-foreground/10 hover:text-foreground grid size-6 shrink-0 place-items-center rounded opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    <button
+                      onClick={() => deleteWorkspace(w)}
+                      disabled={pending}
+                      aria-label={`Eliminar ${w.name}`}
+                      className="text-muted-foreground hover:bg-accent-foreground/10 hover:text-destructive grid size-6 shrink-0 place-items-center rounded opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </>
                 )}
-              </Link>
+              </div>
             ))}
             <button
               onClick={createWorkspace}

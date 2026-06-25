@@ -68,3 +68,10 @@ export async function googleSignInAction() {
 export async function logoutAction() {
   await signOut({ redirectTo: "/login" });
 }
+
+// Cierra la sesión actual y lleva al login para entrar con otra cuenta
+// (o registrar una nueva). La sesión es única, así que cambiar y añadir
+// cuenta comparten el mismo flujo.
+export async function switchAccountAction() {
+  await signOut({ redirectTo: "/login" });
+}

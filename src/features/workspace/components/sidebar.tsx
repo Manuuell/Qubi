@@ -9,7 +9,6 @@ import {
   Clock,
   Database,
   FileText,
-  LogOut,
   Plus,
   Star,
   Table,
@@ -21,11 +20,11 @@ import type { PageTreeItem } from "@/server/services/page";
 import type { ProjectListItem } from "@/server/services/project";
 import { archivePageAction, createPageAction } from "@/server/actions/page";
 import { createDatabaseAction } from "@/server/actions/database";
-import { logoutAction } from "@/server/actions/auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommandPalette } from "@/features/search/components/command-palette";
 import { CreateProjectButton } from "@/features/project/components/create-project-button";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
+import { AccountMenu } from "@/features/workspace/components/account-menu";
 
 type TreeNode = PageTreeItem & { children: TreeNode[] };
 
@@ -50,13 +49,25 @@ export function Sidebar({
   projects,
   favorites,
   userName,
+  userEmail,
 }: {
-  workspace: { id: string; name: string; icon: string | null };
-  workspaces: { id: string; name: string; icon: string | null }[];
+  workspace: {
+    id: string;
+    name: string;
+    icon: string | null;
+    isOwner: boolean;
+  };
+  workspaces: {
+    id: string;
+    name: string;
+    icon: string | null;
+    isOwner: boolean;
+  }[];
   pages: PageTreeItem[];
   projects: ProjectListItem[];
   favorites: { id: string; title: string; type: "PAGE" | "DATABASE" }[];
   userName: string;
+  userEmail: string;
 }) {
   const tree = buildTree(pages);
   const pathname = usePathname();
@@ -204,15 +215,7 @@ export function Sidebar({
           </span>
           <span className="min-w-0 flex-1 truncate text-xs">{userName}</span>
           <ThemeToggle />
-          <form action={logoutAction}>
-            <button
-              type="submit"
-              aria-label="Cerrar sesión"
-              className="text-muted-foreground hover:bg-accent hover:text-foreground grid size-7 place-items-center rounded"
-            >
-              <LogOut className="size-4" />
-            </button>
-          </form>
+          <AccountMenu userName={userName} userEmail={userEmail} />
         </div>
       </div>
     </aside>
