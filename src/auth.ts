@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { verifySwitchToken } from "@/lib/switch-token";
 
 const googleEnabled = !!(
   process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
@@ -32,6 +33,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const ok = await bcrypt.compare(password, user.hashedPassword);
         if (!ok) return null;
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+        };
+      },
+    }),
+    // Cambio de cuenta sin contraseña: acepta un token firmado que prueba que
+    // esa cuenta ya se autenticó en este navegador (ver lib/switch-token).
+    Credentials({
+      id: "switch",
+      name: "switch",
+      credentials: { token: { label: "Token", type: "text" } },
+      authorize: async (credentials) => {
+        const token = String(credentials?.token ?? "");
+        const payload = verifySwitchToken(token);
+        if (!payload) return null;
+
+        const user = await prisma.user.findUnique({
+          where: { id: payload.userId },
+        });
+        if (!user) return null;
 
         return {
           id: user.id,

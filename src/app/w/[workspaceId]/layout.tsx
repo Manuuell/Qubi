@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getWorkspace, getUserWorkspaces } from "@/server/services/workspace";
 import { getPageTree, getFavoritePages } from "@/server/services/page";
 import { listProjects } from "@/server/services/project";
+import { readRing } from "@/server/account-ring";
 import { Sidebar } from "@/features/workspace/components/sidebar";
 
 export default async function WorkspaceLayout({
@@ -18,12 +19,18 @@ export default async function WorkspaceLayout({
   const workspace = await getWorkspace(workspaceId, user.id);
   if (!workspace) notFound();
 
-  const [pages, workspaces, favorites, projects] = await Promise.all([
+  const [pages, workspaces, favorites, projects, ring] = await Promise.all([
     getPageTree(workspaceId),
     getUserWorkspaces(user.id),
     getFavoritePages(user.id, workspaceId),
     listProjects(workspaceId),
+    readRing(),
   ]);
+
+  // Otras cuentas recordadas en este navegador (excluye la activa).
+  const accounts = ring
+    .filter((e) => e.userId !== user.id)
+    .map((e) => ({ userId: e.userId, name: e.name, email: e.email }));
 
   return (
     <div className="flex h-screen">
@@ -49,6 +56,7 @@ export default async function WorkspaceLayout({
         }))}
         userName={user.name ?? user.email}
         userEmail={user.email}
+        accounts={accounts}
       />
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>

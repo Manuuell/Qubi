@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,7 +10,13 @@ import {
   registerAction,
 } from "@/server/actions/auth";
 
-export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
+export function LoginForm({
+  googleEnabled,
+  addMode = false,
+}: {
+  googleEnabled: boolean;
+  addMode?: boolean;
+}) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [loginState, loginSubmit, loginPending] = useActionState(loginAction, {
     error: undefined,
@@ -34,9 +41,23 @@ export function LoginForm({ googleEnabled }: { googleEnabled: boolean }) {
           Qubi
         </div>
         <p className="text-muted-foreground text-sm">
-          {isLogin ? "Inicia sesión en tu espacio" : "Crea tu cuenta gratis"}
+          {addMode
+            ? "Entra con otra cuenta para añadirla"
+            : isLogin
+              ? "Inicia sesión en tu espacio"
+              : "Crea tu cuenta gratis"}
         </p>
       </div>
+
+      {addMode && (
+        <div className="bg-muted/50 text-muted-foreground rounded-md border px-3 py-2 text-center text-xs">
+          Tu sesión actual sigue abierta. Podrás cambiar entre cuentas desde el
+          menú.{" "}
+          <Link href="/" className="text-foreground underline">
+            Cancelar
+          </Link>
+        </div>
+      )}
 
       {googleEnabled && (
         <>

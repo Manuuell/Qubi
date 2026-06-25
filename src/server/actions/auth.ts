@@ -2,8 +2,9 @@
 
 import { AuthError } from "next-auth";
 import bcrypt from "bcryptjs";
-import { signIn, signOut } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/db";
+import { removeFromRing } from "@/server/account-ring";
 
 type FormState = { error?: string };
 
@@ -66,12 +67,8 @@ export async function googleSignInAction() {
 }
 
 export async function logoutAction() {
-  await signOut({ redirectTo: "/login" });
-}
-
-// Cierra la sesión actual y lleva al login para entrar con otra cuenta
-// (o registrar una nueva). La sesión es única, así que cambiar y añadir
-// cuenta comparten el mismo flujo.
-export async function switchAccountAction() {
+  // Al cerrar sesión, esa cuenta deja de estar disponible en el conmutador.
+  const session = await auth();
+  if (session?.user?.id) await removeFromRing(session.user.id);
   await signOut({ redirectTo: "/login" });
 }

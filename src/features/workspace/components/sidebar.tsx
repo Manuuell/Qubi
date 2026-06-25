@@ -50,6 +50,7 @@ export function Sidebar({
   favorites,
   userName,
   userEmail,
+  accounts,
 }: {
   workspace: {
     id: string;
@@ -68,6 +69,7 @@ export function Sidebar({
   favorites: { id: string; title: string; type: "PAGE" | "DATABASE" }[];
   userName: string;
   userEmail: string;
+  accounts: { userId: string; name: string | null; email: string }[];
 }) {
   const tree = buildTree(pages);
   const pathname = usePathname();
@@ -215,7 +217,10 @@ export function Sidebar({
           </span>
           <span className="min-w-0 flex-1 truncate text-xs">{userName}</span>
           <ThemeToggle />
-          <AccountMenu userName={userName} userEmail={userEmail} />
+          <AccountMenu
+            current={{ name: userName, email: userEmail }}
+            accounts={accounts}
+          />
         </div>
       </div>
     </aside>
