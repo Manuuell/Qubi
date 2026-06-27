@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { LayoutGrid, List, Calendar } from "lucide-react";
+import { LayoutGrid, List, Calendar, GanttChartSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth";
 import { getProject } from "@/server/services/project";
@@ -12,11 +12,13 @@ import { QuickAddTask } from "@/features/task/components/quick-add-task";
 import { TaskBoard } from "@/features/task/components/task-board";
 import { TaskList } from "@/features/task/components/task-list";
 import { TaskCalendar } from "@/features/task/components/task-calendar";
+import { TaskGantt } from "@/features/task/components/task-gantt";
 
 const VIEWS = [
   { key: "board", label: "Tablero", icon: LayoutGrid },
   { key: "list", label: "Lista", icon: List },
   { key: "calendar", label: "Calendario", icon: Calendar },
+  { key: "gantt", label: "Cronograma", icon: GanttChartSquare },
 ] as const;
 
 export default async function ProjectPage({
@@ -29,7 +31,13 @@ export default async function ProjectPage({
   const { workspaceId, projectId } = await params;
   const { view: rawView } = await searchParams;
   const view =
-    rawView === "list" ? "list" : rawView === "calendar" ? "calendar" : "board";
+    rawView === "list"
+      ? "list"
+      : rawView === "calendar"
+        ? "calendar"
+        : rawView === "gantt"
+          ? "gantt"
+          : "board";
   const user = await getCurrentUser();
 
   const project = await getProject(projectId, user.id);
@@ -112,6 +120,9 @@ export default async function ProjectPage({
         )}
         {view === "calendar" && (
           <TaskCalendar tasks={tasks} workspaceId={workspaceId} />
+        )}
+        {view === "gantt" && (
+          <TaskGantt tasks={tasks} workspaceId={workspaceId} />
         )}
       </div>
     </div>

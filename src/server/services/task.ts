@@ -27,6 +27,7 @@ export type TaskCard = {
   body: string;
   status: IssueStatus;
   priority: Priority;
+  startDate: Date | null;
   dueDate: Date | null;
   assignee: { id: string; name: string | null; email: string } | null;
 };
@@ -51,6 +52,7 @@ export async function listProjectTasks(
       body: true,
       status: true,
       priority: true,
+      startDate: true,
       dueDate: true,
       assignee: { select: { id: true, name: true, email: true } },
     },
@@ -173,6 +175,15 @@ export async function setTaskDueDate(
 ) {
   await assertTaskAccess(taskId, userId);
   return prisma.issue.update({ where: { id: taskId }, data: { dueDate } });
+}
+
+export async function setTaskStartDate(
+  taskId: string,
+  userId: string,
+  startDate: Date | null,
+) {
+  await assertTaskAccess(taskId, userId);
+  return prisma.issue.update({ where: { id: taskId }, data: { startDate } });
 }
 
 // Detalle completo de una tarea por número (#n), con proyecto, personas y comentarios.

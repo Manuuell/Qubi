@@ -10,6 +10,7 @@ import { TaskCommentForm } from "@/features/task/components/task-comment-form";
 import { TaskStatusSelect } from "@/features/task/components/task-status-select";
 import { TaskAssigneeSelect } from "@/features/task/components/task-assignee-select";
 import { TaskPrioritySelect } from "@/features/task/components/task-priority-select";
+import { TaskStartDateInput } from "@/features/task/components/task-start-date-input";
 import { TaskDueDateInput } from "@/features/task/components/task-due-date-input";
 
 function personName(p: { name: string | null; email: string } | null) {
@@ -95,6 +96,14 @@ export default async function TaskDetailPage({
             projectId={projectId}
             assigneeId={task.assignee?.id ?? null}
             members={memberOptions}
+          />
+        </Field>
+        <Field label="Fecha de inicio">
+          <TaskStartDateInput
+            taskId={task.id}
+            workspaceId={workspaceId}
+            projectId={projectId}
+            startDate={task.startDate}
           />
         </Field>
         <Field label="Fecha límite">

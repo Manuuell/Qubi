@@ -285,6 +285,7 @@ model Issue {
   body        String      @default("")
   status      IssueStatus @default(TODO)
   priority    Priority    @default(MEDIUM)
+  startDate   DateTime? // fecha de inicio planificada (alimenta el Gantt)
   dueDate     DateTime? // fecha límite (alimenta la agenda y el calendario)
   completedAt DateTime? // momento en que se marcó como HECHA
   authorId    String?

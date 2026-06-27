@@ -75,6 +75,19 @@ export async function setTaskDueDateAction(input: {
   revalidateProject(input.workspaceId, input.projectId);
 }
 
+export async function setTaskStartDateAction(input: {
+  taskId: string;
+  workspaceId: string;
+  projectId: string;
+  startDate: string | null;
+}) {
+  const user = await getCurrentUser();
+  // "YYYY-MM-DD" -> medianoche local (igual que la fecha límite).
+  const date = input.startDate ? new Date(`${input.startDate}T00:00:00`) : null;
+  await taskService.setTaskStartDate(input.taskId, user.id, date);
+  revalidateProject(input.workspaceId, input.projectId);
+}
+
 export async function setTaskTitleAction(input: {
   taskId: string;
   workspaceId: string;
