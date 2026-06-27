@@ -25,6 +25,8 @@ import { CommandPalette } from "@/features/search/components/command-palette";
 import { CreateProjectButton } from "@/features/project/components/create-project-button";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
 import { AccountMenu } from "@/features/workspace/components/account-menu";
+import { NotificationBell } from "@/features/notification/components/notification-bell";
+import type { Inbox } from "@/server/services/notification";
 
 type TreeNode = PageTreeItem & { children: TreeNode[] };
 
@@ -51,6 +53,7 @@ export function Sidebar({
   userName,
   userEmail,
   accounts,
+  inbox,
 }: {
   workspace: {
     id: string;
@@ -70,6 +73,7 @@ export function Sidebar({
   userName: string;
   userEmail: string;
   accounts: { userId: string; name: string | null; email: string }[];
+  inbox: Inbox;
 }) {
   const tree = buildTree(pages);
   const pathname = usePathname();
@@ -216,6 +220,7 @@ export function Sidebar({
             {userName.charAt(0).toUpperCase()}
           </span>
           <span className="min-w-0 flex-1 truncate text-xs">{userName}</span>
+          <NotificationBell inbox={inbox} />
           <ThemeToggle />
           <AccountMenu
             current={{ name: userName, email: userEmail }}

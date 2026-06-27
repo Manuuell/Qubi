@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getWorkspace, getUserWorkspaces } from "@/server/services/workspace";
 import { getPageTree, getFavoritePages } from "@/server/services/page";
 import { listProjects } from "@/server/services/project";
+import { getInbox } from "@/server/services/notification";
 import { readRing } from "@/server/account-ring";
 import { Sidebar } from "@/features/workspace/components/sidebar";
 
@@ -19,13 +20,15 @@ export default async function WorkspaceLayout({
   const workspace = await getWorkspace(workspaceId, user.id);
   if (!workspace) notFound();
 
-  const [pages, workspaces, favorites, projects, ring] = await Promise.all([
-    getPageTree(workspaceId),
-    getUserWorkspaces(user.id),
-    getFavoritePages(user.id, workspaceId),
-    listProjects(workspaceId),
-    readRing(),
-  ]);
+  const [pages, workspaces, favorites, projects, ring, inbox] =
+    await Promise.all([
+      getPageTree(workspaceId),
+      getUserWorkspaces(user.id),
+      getFavoritePages(user.id, workspaceId),
+      listProjects(workspaceId),
+      readRing(),
+      getInbox({ id: user.id, email: user.email }),
+    ]);
 
   // Otras cuentas recordadas en este navegador (excluye la activa).
   const accounts = ring
@@ -57,6 +60,7 @@ export default async function WorkspaceLayout({
         userName={user.name ?? user.email}
         userEmail={user.email}
         accounts={accounts}
+        inbox={inbox}
       />
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>

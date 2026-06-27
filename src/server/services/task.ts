@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { IssueStatus, Priority, ProjectStatus } from "@/generated/prisma/enums";
+import { notifyTaskAssigned } from "@/server/services/notification";
 
 // Las "tareas" son filas del modelo Issue ligadas a un proyecto (projectId).
 
@@ -111,7 +112,7 @@ export async function createTask(input: {
     orderBy: { number: "desc" },
     select: { number: true },
   });
-  return prisma.issue.create({
+  const issue = await prisma.issue.create({
     data: {
       workspaceId: input.workspaceId,
       projectId: input.projectId,
@@ -121,6 +122,9 @@ export async function createTask(input: {
       assigneeId: input.assigneeId ?? null,
     },
   });
+  // Avisa a la persona si se le asignó la tarea al crearla.
+  await notifyTaskAssigned(issue, input.userId);
+  return issue;
 }
 
 export async function setTaskStatus(
@@ -144,7 +148,13 @@ export async function setTaskAssignee(
   assigneeId: string | null,
 ) {
   await assertTaskAccess(taskId, userId);
-  return prisma.issue.update({ where: { id: taskId }, data: { assigneeId } });
+  const issue = await prisma.issue.update({
+    where: { id: taskId },
+    data: { assigneeId },
+  });
+  // Avisa al nuevo responsable (notifyTaskAssigned ignora autoasignaciones).
+  await notifyTaskAssigned(issue, userId);
+  return issue;
 }
 
 export async function setTaskPriority(

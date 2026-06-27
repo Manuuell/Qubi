@@ -24,29 +24,8 @@ export function getWorkspaceMembers(workspaceId: string) {
   });
 }
 
-// Invita por email: crea el usuario si no existe y lo añade al workspace.
-export async function addMemberByEmail(
-  workspaceId: string,
-  actingUserId: string,
-  email: string,
-  role: WorkspaceRole,
-) {
-  await assertWorkspaceAdmin(workspaceId, actingUserId);
-  const normalized = email.trim().toLowerCase();
-  if (!normalized) throw new Error("Email no válido");
-
-  const user = await prisma.user.upsert({
-    where: { email: normalized },
-    update: {},
-    create: { email: normalized },
-  });
-
-  return prisma.workspaceMember.upsert({
-    where: { workspaceId_userId: { workspaceId, userId: user.id } },
-    update: { role },
-    create: { workspaceId, userId: user.id, role },
-  });
-}
+// El alta de miembros ahora pasa por una invitación que la persona debe aceptar.
+// Ver `inviteToWorkspace` / `acceptInvite` en `services/invite.ts`.
 
 export async function removeMember(
   workspaceId: string,

@@ -37,6 +37,19 @@ enum Priority {
   HIGH
 }
 
+// Estado de una invitación a un espacio de trabajo.
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+// Tipo de notificación que recibe un usuario.
+enum NotificationType {
+  TASK_ASSIGNED // te asignaron como responsable de una tarea
+  TASK_DUE_SOON // una tarea tuya está por vencer
+}
+
 // ── Usuarios ─────────────────────────────────────────────────────────────
 
 model User {
@@ -55,10 +68,13 @@ model User {
   accounts        Account[]
   sessions        Session[]
   favorites       Favorite[]
-  authoredIssues  Issue[]        @relation("IssueAuthor")
-  assignedIssues  Issue[]        @relation("IssueAssignee")
-  issueComments   IssueComment[] @relation("IssueCommentAuthor")
+  authoredIssues  Issue[]           @relation("IssueAuthor")
+  assignedIssues  Issue[]           @relation("IssueAssignee")
+  issueComments   IssueComment[]    @relation("IssueCommentAuthor")
   timeEntries     TimeEntry[]
+  notifications   Notification[]    @relation("NotificationRecipient")
+  triggeredNotifs Notification[]    @relation("NotificationActor")
+  sentInvites     WorkspaceInvite[] @relation("InviteCreatedBy")
 }
 
 // ── Auth.js (NextAuth) ───────────────────────────────────────────────────
@@ -113,11 +129,13 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  owner    User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members  WorkspaceMember[]
-  pages    Page[]
-  issues   Issue[]
-  projects Project[]
+  owner         User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members       WorkspaceMember[]
+  pages         Page[]
+  issues        Issue[]
+  projects      Project[]
+  invites       WorkspaceInvite[]
+  notifications Notification[]
 
   @@index([ownerId])
 }
@@ -153,6 +171,50 @@ model WorkspaceMember {
 
   @@unique([workspaceId, userId])
   @@index([userId])
+}
+
+// Invitación a un espacio. La persona invitada debe aceptarla para entrar
+// (antes se la añadía directamente). Se identifica por email para poder invitar
+// a quien aún no tiene cuenta: la invitación aparece cuando inicia sesión.
+model WorkspaceInvite {
+  id          String        @id @default(cuid())
+  workspaceId String
+  email       String // correo de la persona invitada (normalizado en minúsculas)
+  role        WorkspaceRole @default(MEMBER)
+  status      InviteStatus  @default(PENDING)
+  invitedById String? // quién envió la invitación
+  createdAt   DateTime      @default(now())
+  respondedAt DateTime? // cuándo se aceptó o rechazó
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy User?     @relation("InviteCreatedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, email])
+  @@index([email])
+}
+
+// Notificación dirigida a un usuario (asignación de tarea, vencimiento, etc.).
+// El texto se guarda denormalizado para que sobreviva si la tarea cambia o se
+// borra. `issueId` no tiene clave foránea a propósito (acoplamiento débil).
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String // destinatario
+  type        NotificationType
+  title       String // texto principal ya formateado
+  body        String           @default("") // detalle (p. ej. el título de la tarea)
+  href        String? // a dónde lleva al hacer clic
+  workspaceId String?
+  issueId     String? // tarea relacionada (sin FK, para deduplicar)
+  actorId     String? // quién la provocó
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+
+  user      User       @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor     User?      @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, issueId])
 }
 
 // ── Páginas (contenido; anidables en árbol) ──────────────────────────────
