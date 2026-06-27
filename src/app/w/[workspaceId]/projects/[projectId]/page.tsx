@@ -12,7 +12,7 @@ import { QuickAddTask } from "@/features/task/components/quick-add-task";
 import { TaskBoard } from "@/features/task/components/task-board";
 import { TaskList } from "@/features/task/components/task-list";
 import { TaskCalendar } from "@/features/task/components/task-calendar";
-import { TaskGantt } from "@/features/task/components/task-gantt";
+import { TaskGanttView } from "@/features/task/components/task-gantt-view";
 
 const VIEWS = [
   { key: "board", label: "Tablero", icon: LayoutGrid },
@@ -122,7 +122,11 @@ export default async function ProjectPage({
           <TaskCalendar tasks={tasks} workspaceId={workspaceId} />
         )}
         {view === "gantt" && (
-          <TaskGantt tasks={tasks} workspaceId={workspaceId} />
+          <TaskGanttView
+            tasks={tasks}
+            members={memberOptions}
+            workspaceId={workspaceId}
+          />
         )}
       </div>
     </div>
