@@ -75,6 +75,7 @@ model User {
   notifications   Notification[]    @relation("NotificationRecipient")
   triggeredNotifs Notification[]    @relation("NotificationActor")
   sentInvites     WorkspaceInvite[] @relation("InviteCreatedBy")
+  runningTimer    RunningTimer?
 }
 
 // ── Auth.js (NextAuth) ───────────────────────────────────────────────────
@@ -151,9 +152,10 @@ model Project {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  tasks       Issue[] // las tareas del proyecto (modelo Issue)
-  timeEntries TimeEntry[]
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tasks         Issue[] // las tareas del proyecto (modelo Issue)
+  timeEntries   TimeEntry[]
+  runningTimers RunningTimer[]
 
   @@index([workspaceId])
 }
@@ -325,6 +327,20 @@ model TimeEntry {
   @@index([projectId, date])
   @@index([userId, date])
   @@index([issueId])
+}
+
+// Temporizador en marcha de un usuario (un único cronómetro activo por persona).
+// Al detenerlo se calcula el tiempo transcurrido y se suma a las horas del día.
+model RunningTimer {
+  id        String   @id @default(cuid())
+  userId    String   @unique // un solo temporizador activo por usuario
+  projectId String
+  startedAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
 }
 
 model IssueComment {

@@ -73,3 +73,39 @@ export function hoursLabel(min: number): string {
 export function hoursToMinutes(h: number): number {
   return Math.round(h * 60);
 }
+
+// ── Mes (clave "YYYY-MM") ───────────────────────────────────────────────────
+
+export function monthKeyOf(d: Date = new Date()): string {
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${d.getFullYear()}-${m}`;
+}
+
+export function isValidMonthKey(s: string | undefined): s is string {
+  return !!s && /^\d{4}-\d{2}$/.test(s);
+}
+
+export function addMonthsToMonthKey(key: string, n: number): string {
+  const [y, m] = key.split("-").map(Number);
+  return monthKeyOf(new Date(y, m - 1 + n, 1));
+}
+
+export function monthLabel(key: string): string {
+  const [y, m] = key.split("-").map(Number);
+  return new Intl.DateTimeFormat("es-ES", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(y, m - 1, 1));
+}
+
+// Rango del mes como claves de día: [primer día, primer día del mes siguiente).
+export function monthRangeKeys(key: string): {
+  startKey: string;
+  endKey: string;
+} {
+  const [y, m] = key.split("-").map(Number);
+  return {
+    startKey: `${key}-01`,
+    endKey: `${monthKeyOf(new Date(y, m, 1))}-01`,
+  };
+}
