@@ -57,7 +57,7 @@ export function NotificationBell({ inbox }: { inbox: Inbox }) {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="bg-popover absolute right-0 bottom-full z-20 mb-1 max-h-[28rem] w-80 overflow-y-auto rounded-lg border shadow-lg">
+          <div className="bg-popover absolute bottom-full left-0 z-20 mb-1 max-h-[28rem] w-80 overflow-y-auto rounded-lg border shadow-lg">
             <div className="bg-popover sticky top-0 flex items-center justify-between border-b px-3 py-2">
               <p className="text-sm font-medium">Notificaciones</p>
               {notifications.some((n) => !n.readAt) && (
