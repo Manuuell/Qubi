@@ -4,6 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   googleSignInAction,
   loginAction,
@@ -116,9 +117,8 @@ export function LoginForm({
               autoComplete="email"
               required
             />
-            <Input
+            <PasswordInput
               name="password"
-              type="password"
               placeholder="Contraseña"
               autoComplete={isLogin ? "current-password" : "new-password"}
               required

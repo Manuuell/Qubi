@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { changePasswordAction } from "@/server/actions/auth";
 
 export function ChangePasswordForm({ hasPassword }: { hasPassword: boolean }) {
@@ -13,17 +13,15 @@ export function ChangePasswordForm({ hasPassword }: { hasPassword: boolean }) {
   return (
     <form action={submit} className="max-w-sm space-y-3">
       {hasPassword && (
-        <Input
+        <PasswordInput
           name="currentPassword"
-          type="password"
           placeholder="Contraseña actual"
           autoComplete="current-password"
           required
         />
       )}
-      <Input
+      <PasswordInput
         name="newPassword"
-        type="password"
         placeholder="Nueva contraseña"
         autoComplete="new-password"
         required

@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { resetPasswordAction } from "@/server/actions/auth";
 
 export function ResetPasswordForm({ token }: { token: string }) {
@@ -25,9 +25,8 @@ export function ResetPasswordForm({ token }: { token: string }) {
       {token ? (
         <form action={submit} className="space-y-3">
           <input type="hidden" name="token" value={token} />
-          <Input
+          <PasswordInput
             name="password"
-            type="password"
             placeholder="Nueva contraseña"
             autoComplete="new-password"
             required
