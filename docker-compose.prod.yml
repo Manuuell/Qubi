@@ -41,6 +41,8 @@ services:
       context: .
       target: tooling
     command: npx prisma migrate deploy
+    environment:
+      TZ: America/Bogota
     env_file:
       - .env
     depends_on:
@@ -56,6 +58,10 @@ services:
         # Se incrusta en el bundle del navegador durante el build.
         NEXT_PUBLIC_COLLAB_URL: ${NEXT_PUBLIC_COLLAB_URL}
     restart: unless-stopped
+    environment:
+      # Sin esto, el contenedor corre en UTC y "hoy"/el cronómetro/las horas
+      # quedan desfasados varias horas respecto a la hora de Colombia.
+      TZ: America/Bogota
     env_file:
       - .env
     depends_on:
@@ -73,6 +79,8 @@ services:
       target: tooling
     command: npx tsx collab/server.ts
     restart: unless-stopped
+    environment:
+      TZ: America/Bogota
     env_file:
       - .env
     depends_on:
