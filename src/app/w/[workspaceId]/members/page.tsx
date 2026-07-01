@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { WorkspaceRole } from "@/generated/prisma/enums";
 import { getCurrentUser } from "@/lib/auth";
 import { getWorkspace } from "@/server/services/workspace";
 import { getWorkspaceMembers } from "@/server/services/member";
@@ -22,6 +21,9 @@ export default async function MembersPage({
     listWorkspacePendingInvites(workspaceId),
   ]);
 
+  const currentMember = members.find((m) => m.userId === user.id);
+  if (!currentMember) notFound();
+
   return (
     <div className="mx-auto max-w-3xl px-12 py-16">
       <h1 className="mb-2 text-2xl font-bold tracking-tight">Miembros</h1>
@@ -31,12 +33,13 @@ export default async function MembersPage({
       </p>
       <MembersManager
         workspaceId={workspaceId}
+        currentUserId={user.id}
+        currentUserRole={currentMember.role}
         members={members.map((m) => ({
           userId: m.userId,
           role: m.role,
           email: m.user.email,
           name: m.user.name,
-          isOwner: m.role === WorkspaceRole.OWNER,
         }))}
         invites={invites.map((i) => ({
           id: i.id,

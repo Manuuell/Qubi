@@ -43,3 +43,41 @@ export async function removeMember(
     where: { workspaceId_userId: { workspaceId, userId: memberUserId } },
   });
 }
+
+// Solo el OWNER puede cambiar el rol de otros miembros.
+// El rol OWNER no se puede asignar aquí (requeriría transferir la propiedad).
+export async function changeMemberRole(
+  workspaceId: string,
+  actingUserId: string,
+  targetUserId: string,
+  newRole: WorkspaceRole,
+) {
+  if (newRole === WorkspaceRole.OWNER) {
+    throw new Error("No se puede asignar el rol de Propietario");
+  }
+  if (targetUserId === actingUserId) {
+    throw new Error("No puedes cambiar tu propio rol");
+  }
+
+  const [actor, target] = await Promise.all([
+    prisma.workspaceMember.findUnique({
+      where: { workspaceId_userId: { workspaceId, userId: actingUserId } },
+    }),
+    prisma.workspaceMember.findUnique({
+      where: { workspaceId_userId: { workspaceId, userId: targetUserId } },
+    }),
+  ]);
+
+  if (actor?.role !== WorkspaceRole.OWNER) {
+    throw new Error("Solo el propietario puede cambiar roles");
+  }
+  if (!target) throw new Error("El miembro no existe");
+  if (target.role === WorkspaceRole.OWNER) {
+    throw new Error("No puedes cambiar el rol del propietario");
+  }
+
+  return prisma.workspaceMember.update({
+    where: { workspaceId_userId: { workspaceId, userId: targetUserId } },
+    data: { role: newRole },
+  });
+}

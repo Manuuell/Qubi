@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getTaskDetail } from "@/server/services/task";
 import { getWorkspaceMembers } from "@/server/services/member";
+import { RoleBadge } from "@/features/workspace/components/role-badge";
 import { TaskTitle } from "@/features/task/components/task-title";
 import { TaskDescription } from "@/features/task/components/task-description";
 import { TaskCommentForm } from "@/features/task/components/task-comment-form";
@@ -34,6 +35,10 @@ export default async function TaskDetailPage({
     name: m.user.name,
     email: m.user.email,
   }));
+  // Mapa userId → rol para mostrar badges en comentarios y en el responsable.
+  const roleByUserId = Object.fromEntries(
+    members.map((m) => [m.user.id, m.role]),
+  );
   const projectId = task.project?.id ?? "";
 
   const backHref = task.project
@@ -90,13 +95,18 @@ export default async function TaskDetailPage({
           />
         </Field>
         <Field label="Responsable">
-          <TaskAssigneeSelect
-            taskId={task.id}
-            workspaceId={workspaceId}
-            projectId={projectId}
-            assigneeId={task.assignee?.id ?? null}
-            members={memberOptions}
-          />
+          <div className="flex items-center gap-1.5">
+            <TaskAssigneeSelect
+              taskId={task.id}
+              workspaceId={workspaceId}
+              projectId={projectId}
+              assigneeId={task.assignee?.id ?? null}
+              members={memberOptions}
+            />
+            {task.assignee && roleByUserId[task.assignee.id] && (
+              <RoleBadge role={roleByUserId[task.assignee.id]} />
+            )}
+          </div>
         </Field>
         <Field label="Fecha de inicio">
           <TaskStartDateInput
@@ -138,9 +148,14 @@ export default async function TaskDetailPage({
         </h2>
         {task.comments.map((c) => (
           <div key={c.id} className="bg-card rounded-md border p-3">
-            <p className="text-muted-foreground mb-1 text-xs">
-              {personName(c.author)}
-            </p>
+            <div className="mb-1 flex items-center gap-1.5">
+              <span className="text-muted-foreground text-xs">
+                {personName(c.author)}
+              </span>
+              {c.author && roleByUserId[c.author.id] && (
+                <RoleBadge role={roleByUserId[c.author.id]} />
+              )}
+            </div>
             <p className="text-sm whitespace-pre-wrap">{c.body}</p>
           </div>
         ))}

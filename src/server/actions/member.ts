@@ -43,3 +43,19 @@ export async function revokeInviteAction(input: {
   await inviteService.revokeInvite(input.inviteId, user.id);
   revalidatePath(`/w/${input.workspaceId}/members`);
 }
+
+// Cambia el rol de un miembro (solo OWNER del espacio).
+export async function changeMemberRoleAction(input: {
+  workspaceId: string;
+  targetUserId: string;
+  newRole: WorkspaceRole;
+}) {
+  const user = await getCurrentUser();
+  await memberService.changeMemberRole(
+    input.workspaceId,
+    user.id,
+    input.targetUserId,
+    input.newRole,
+  );
+  revalidatePath(`/w/${input.workspaceId}/members`);
+}
