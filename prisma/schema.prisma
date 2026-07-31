@@ -76,6 +76,7 @@ model User {
   triggeredNotifs Notification[]    @relation("NotificationActor")
   sentInvites     WorkspaceInvite[] @relation("InviteCreatedBy")
   runningTimer    RunningTimer?
+  workSessions    WorkSession[]
 }
 
 // ── Auth.js (NextAuth) ───────────────────────────────────────────────────
@@ -137,6 +138,7 @@ model Workspace {
   projects      Project[]
   invites       WorkspaceInvite[]
   notifications Notification[]
+  workSessions  WorkSession[]
 
   @@index([ownerId])
 }
@@ -156,6 +158,7 @@ model Project {
   tasks         Issue[] // las tareas del proyecto (modelo Issue)
   timeEntries   TimeEntry[]
   runningTimers RunningTimer[]
+  workSessions  WorkSession[]
 
   @@index([workspaceId])
 }
@@ -331,24 +334,66 @@ model TimeEntry {
 
 // Temporizador en marcha de un usuario (un único cronómetro activo por persona).
 // Al detenerlo se calcula el tiempo transcurrido y se suma a las horas del día.
+// accumulatedMinutes guarda lo ya corrido antes de la pausa actual; mientras
+// pausedAt sea null, el tiempo sigue corriendo desde startedAt.
 model RunningTimer {
-  id        String   @id @default(cuid())
-  userId    String   @unique // un solo temporizador activo por usuario
-  projectId String
-  startedAt DateTime @default(now())
+  id                 String    @id @default(cuid())
+  userId             String    @unique // un solo temporizador activo por usuario
+  projectId          String
+  sessionId          String    @unique
+  startedAt          DateTime  @default(now())
+  accumulatedMinutes Int       @default(0)
+  pausedAt           DateTime?
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  session WorkSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
 }
 
+// Historial de sesiones de trabajo (cada vez que se inicia el cronómetro).
+// Queda un registro aunque el RunningTimer ya se haya cerrado/borrado.
+model WorkSession {
+  id          String    @id @default(cuid())
+  userId      String
+  projectId   String
+  workspaceId String
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  minutes     Int       @default(0)
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workspace    Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  notes        WorkSessionNote[]
+  runningTimer RunningTimer?
+
+  @@index([userId, startedAt])
+  @@index([workspaceId, startedAt])
+  @@index([projectId])
+}
+
+// Avance registrado durante una sesión de trabajo (nota + captura opcional).
+model WorkSessionNote {
+  id            String   @id @default(cuid())
+  sessionId     String
+  body          String
+  screenshotUrl String?
+  createdAt     DateTime @default(now())
+
+  session WorkSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
 model IssueComment {
-  id        String   @id @default(cuid())
-  issueId   String
-  authorId  String?
-  body      String
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  issueId       String
+  authorId      String?
+  body          String
+  attachmentUrl String?
+  createdAt     DateTime @default(now())
 
   issue  Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
   author User? @relation("IssueCommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)

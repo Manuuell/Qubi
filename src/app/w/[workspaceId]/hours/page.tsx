@@ -7,7 +7,6 @@ import { WorkspaceRole } from "@/generated/prisma/enums";
 import { getWorkspace } from "@/server/services/workspace";
 import {
   getMonthlySummary,
-  getRunningTimer,
   getTeamWeek,
   getWeekTimesheet,
   getWorkspaceRole,
@@ -153,10 +152,7 @@ async function WeekView({
     );
   }
 
-  const [sheet, timer] = await Promise.all([
-    getWeekTimesheet(workspaceId, userId, anchor),
-    getRunningTimer(userId),
-  ]);
+  const sheet = await getWeekTimesheet(workspaceId, userId, anchor);
   const projectOptions = sheet.rows.map((r) => ({
     id: r.projectId,
     name: r.name,
@@ -166,11 +162,7 @@ async function WeekView({
   return (
     <>
       <div className="mt-6">
-        <WorkTimer
-          workspaceId={workspaceId}
-          projects={projectOptions}
-          timer={timer}
-        />
+        <WorkTimer workspaceId={workspaceId} projects={projectOptions} />
       </div>
       <WeekShell
         workspaceId={workspaceId}

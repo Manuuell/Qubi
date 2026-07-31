@@ -24,3 +24,11 @@ export async function setHoursAction(input: {
   );
   revalidatePath(`/w/${input.workspaceId}/hours`);
 }
+
+// Minutos por día de la semana actual (para el mini-gráfico del widget del
+// cronómetro flotante).
+export async function getMyWeekChartAction(workspaceId: string) {
+  const user = await getCurrentUser();
+  const sheet = await timeService.getWeekTimesheet(workspaceId, user.id);
+  return { dayKeys: sheet.dayKeys, dayTotals: sheet.dayTotals };
+}

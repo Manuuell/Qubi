@@ -395,10 +395,13 @@ async function addTimeEntryMinutes(
 }
 
 export type RunningTimerInfo = {
+  sessionId: string;
   projectId: string;
   projectName: string;
   workspaceId: string;
-  startedAt: Date;
+  startedAt: Date; // desde cuándo corre el tramo actual (cambia al reanudar)
+  accumulatedMinutes: number; // ya acumulado antes del tramo actual
+  pausedAt: Date | null;
 };
 
 // Temporizador activo del usuario (global, uno por persona). Incluye el espacio
@@ -409,20 +412,28 @@ export async function getRunningTimer(
   const timer = await prisma.runningTimer.findUnique({
     where: { userId },
     select: {
+      sessionId: true,
       startedAt: true,
+      accumulatedMinutes: true,
+      pausedAt: true,
       project: { select: { id: true, name: true, workspaceId: true } },
     },
   });
   if (!timer) return null;
   return {
+    sessionId: timer.sessionId,
     projectId: timer.project.id,
     projectName: timer.project.name,
     workspaceId: timer.project.workspaceId,
     startedAt: timer.startedAt,
+    accumulatedMinutes: timer.accumulatedMinutes,
+    pausedAt: timer.pausedAt,
   };
 }
 
-// Inicia un temporizador para un proyecto. Falla si ya hay uno activo.
+// Inicia un temporizador para un proyecto. Falla si ya hay uno activo. Crea
+// además una WorkSession: es el registro histórico de la sesión (hoy no
+// existía ninguno; el RunningTimer se borraba sin dejar rastro al detenerse).
 export async function startTimer(
   workspaceId: string,
   userId: string,
@@ -438,21 +449,90 @@ export async function startTimer(
   const existing = await prisma.runningTimer.findUnique({ where: { userId } });
   if (existing) throw new Error("Ya tienes un temporizador en marcha");
 
-  await prisma.runningTimer.create({ data: { userId, projectId } });
+  const session = await prisma.workSession.create({
+    data: { userId, projectId, workspaceId },
+  });
+  await prisma.runningTimer.create({
+    data: { userId, projectId, sessionId: session.id },
+  });
+  return session.id;
 }
 
-// Detiene el temporizador y suma el tiempo a las horas del día en que empezó.
+// Pausa: congela lo corrido del tramo actual en accumulatedMinutes.
+export async function pauseTimer(userId: string) {
+  const timer = await prisma.runningTimer.findUnique({ where: { userId } });
+  if (!timer || timer.pausedAt) return;
+  const elapsed = Math.round((Date.now() - timer.startedAt.getTime()) / 60000);
+  await prisma.runningTimer.update({
+    where: { userId },
+    data: {
+      accumulatedMinutes: timer.accumulatedMinutes + Math.max(0, elapsed),
+      pausedAt: new Date(),
+    },
+  });
+}
+
+// Reanuda: arranca un nuevo tramo desde ahora, conservando lo acumulado.
+export async function resumeTimer(userId: string) {
+  const timer = await prisma.runningTimer.findUnique({ where: { userId } });
+  if (!timer || !timer.pausedAt) return;
+  await prisma.runningTimer.update({
+    where: { userId },
+    data: { startedAt: new Date(), pausedAt: null },
+  });
+}
+
+// Detiene el temporizador, suma el tiempo total (acumulado + tramo en curso)
+// a las horas del día en que empezó la sesión, y cierra la WorkSession.
 export async function stopTimer(userId: string) {
+  const timer = await prisma.runningTimer.findUnique({
+    where: { userId },
+    include: { session: { select: { startedAt: true } } },
+  });
+  if (!timer) return null;
+
+  const runningMinutes = timer.pausedAt
+    ? 0
+    : Math.max(0, Math.round((Date.now() - timer.startedAt.getTime()) / 60000));
+  const totalMinutes = timer.accumulatedMinutes + runningMinutes;
+  const date = keyToDbDate(dateToLocalKey(timer.session.startedAt));
+
+  await addTimeEntryMinutes(timer.projectId, userId, date, totalMinutes);
+  await prisma.workSession.update({
+    where: { id: timer.sessionId },
+    data: { endedAt: new Date(), minutes: totalMinutes },
+  });
+  await prisma.runningTimer.delete({ where: { userId } });
+  return { sessionId: timer.sessionId, minutes: totalMinutes };
+}
+
+// Cancela el temporizador sin registrar el tiempo: borra la WorkSession
+// entera (arrastra al RunningTimer y a cualquier nota por la cascada del FK).
+export async function cancelTimer(userId: string) {
   const timer = await prisma.runningTimer.findUnique({ where: { userId } });
   if (!timer) return;
-
-  const minutes = Math.round((Date.now() - timer.startedAt.getTime()) / 60000);
-  const date = keyToDbDate(dateToLocalKey(timer.startedAt));
-  await addTimeEntryMinutes(timer.projectId, userId, date, minutes);
-  await prisma.runningTimer.delete({ where: { userId } });
+  await prisma.workSession.delete({ where: { id: timer.sessionId } });
 }
 
-// Cancela el temporizador sin registrar el tiempo.
-export async function cancelTimer(userId: string) {
-  await prisma.runningTimer.deleteMany({ where: { userId } });
+// Avance (nota + captura opcional) registrado durante una sesión de trabajo.
+export async function addWorkSessionNote(
+  sessionId: string,
+  userId: string,
+  body: string,
+  screenshotUrl?: string | null,
+) {
+  const session = await prisma.workSession.findUnique({
+    where: { id: sessionId },
+    select: { userId: true },
+  });
+  if (!session || session.userId !== userId) {
+    throw new Error("Sesión no encontrada");
+  }
+  const trimmed = body.trim();
+  if (!trimmed && !screenshotUrl) {
+    throw new Error("Escribe una nota o adjunta una captura");
+  }
+  return prisma.workSessionNote.create({
+    data: { sessionId, body: trimmed, screenshotUrl: screenshotUrl ?? null },
+  });
 }
