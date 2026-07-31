@@ -257,6 +257,34 @@ export async function startTask(taskId: string, userId: string) {
   return setTaskStatus(taskId, userId, IssueStatus.IN_PROGRESS);
 }
 
+// Agrega una sola persona a la tarea sin tocar al resto de asignados (usado
+// al soltar una tarjeta de tarea sobre la foto de alguien). No hace nada si
+// ya estaba asignada o si la tarea ya tiene el máximo de responsables.
+export async function addTaskAssignee(
+  taskId: string,
+  userId: string,
+  newAssigneeId: string,
+) {
+  const task = await assertTaskAccess(taskId, userId);
+  const current = await prisma.issueAssignee.findMany({
+    where: { issueId: taskId },
+    select: { userId: true },
+  });
+  if (current.some((c) => c.userId === newAssigneeId)) return;
+  if (current.length >= MAX_ASSIGNEES) {
+    throw new Error(`Una tarea admite hasta ${MAX_ASSIGNEES} responsables.`);
+  }
+  await prisma.issueAssignee.create({
+    data: { issueId: taskId, userId: newAssigneeId },
+  });
+  const issue = await prisma.issue.findUniqueOrThrow({
+    where: { id: taskId },
+    select: { id: true, number: true, title: true, workspaceId: true },
+  });
+  await notifyTaskAssigned(issue, [newAssigneeId], userId);
+  return { ...issue, workspaceId: task.workspaceId };
+}
+
 export async function setTaskAssignees(
   taskId: string,
   userId: string,

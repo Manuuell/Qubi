@@ -1,4 +1,4 @@
-import { IssueStatus, Priority } from "@/generated/prisma/enums";
+import { IssueStatus, IssueType, Priority } from "@/generated/prisma/enums";
 
 // Etiquetas y orden de los estados (columnas del tablero).
 export const STATUS_LABEL: Record<IssueStatus, string> = {
@@ -35,6 +35,29 @@ export const PRIORITY_CLASS: Record<Priority, string> = {
   LOW: "bg-muted text-muted-foreground",
   MEDIUM: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
   HIGH: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+};
+
+export const TYPE_LABEL: Record<IssueType, string> = {
+  TASK: "Tarea",
+  FEATURE: "Funcionalidad",
+  BUG: "Error",
+  IMPROVEMENT: "Mejora",
+  DOCS: "Documentación",
+};
+export const TYPE_ORDER: IssueType[] = [
+  IssueType.TASK,
+  IssueType.FEATURE,
+  IssueType.BUG,
+  IssueType.IMPROVEMENT,
+  IssueType.DOCS,
+];
+// Emoji corto para identificar el tipo de un vistazo (tablero, listas).
+export const TYPE_ICON: Record<IssueType, string> = {
+  TASK: "☑️",
+  FEATURE: "✨",
+  BUG: "🐞",
+  IMPROVEMENT: "🚀",
+  DOCS: "📄",
 };
 
 export function initials(name: string | null, email: string) {

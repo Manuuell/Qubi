@@ -15,10 +15,11 @@ import { listProjectTasks } from "@/server/services/task";
 import { getWorkspaceMembers } from "@/server/services/member";
 import { getWorkspaceRole } from "@/server/services/time";
 import { getProjectProduction } from "@/server/services/manager";
+import { listLabels } from "@/server/services/label";
 import { ProjectTitle } from "@/features/project/components/project-title";
 import { ArchiveProjectButton } from "@/features/project/components/archive-project-button";
 import { ProjectProduction } from "@/features/project/components/project-production";
-import { QuickAddTask } from "@/features/task/components/quick-add-task";
+import { NewTaskDialog } from "@/features/task/components/new-task-dialog";
 import { TaskBoard } from "@/features/task/components/task-board";
 import { TaskList } from "@/features/task/components/task-list";
 import { TaskCalendar } from "@/features/task/components/task-calendar";
@@ -66,9 +67,10 @@ export default async function ProjectPage({
             ? "production"
             : "board";
 
-  const [tasks, members] = await Promise.all([
+  const [tasks, members, labels] = await Promise.all([
     listProjectTasks(projectId, user.id),
     getWorkspaceMembers(workspaceId),
+    listLabels(workspaceId, user.id),
   ]);
   const memberOptions = members.map((m) => ({
     id: m.user.id,
@@ -98,7 +100,12 @@ export default async function ProjectPage({
       </div>
 
       <div className="mt-6">
-        <QuickAddTask workspaceId={workspaceId} projectId={projectId} />
+        <NewTaskDialog
+          workspaceId={workspaceId}
+          projectId={projectId}
+          members={memberOptions}
+          labels={labels}
+        />
       </div>
 
       <div className="no-scrollbar mt-6 max-w-full overflow-x-auto">
@@ -132,6 +139,7 @@ export default async function ProjectPage({
         {view === "board" && (
           <TaskBoard
             tasks={tasks}
+            members={memberOptions}
             workspaceId={workspaceId}
             projectId={projectId}
           />

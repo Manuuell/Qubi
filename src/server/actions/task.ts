@@ -34,7 +34,7 @@ export async function createTaskAction(input: {
 }) {
   if (!input.title.trim()) return;
   const user = await getCurrentUser();
-  await taskService.createTask({
+  const issue = await taskService.createTask({
     workspaceId: input.workspaceId,
     projectId: input.projectId,
     userId: user.id,
@@ -49,6 +49,7 @@ export async function createTaskAction(input: {
     linkedPageId: input.linkedPageId,
   });
   revalidateProject(input.workspaceId, input.projectId);
+  return issue;
 }
 
 export async function setTaskStatusAction(input: {
@@ -75,6 +76,19 @@ export async function startTaskAction(input: {
 }) {
   const user = await getCurrentUser();
   await taskService.startTask(input.taskId, user.id);
+  revalidateProject(input.workspaceId, input.projectId);
+}
+
+// Soltar una tarea sobre la foto de alguien (drag & drop) la asigna sin
+// tocar al resto de responsables ya asignados.
+export async function addTaskAssigneeAction(input: {
+  taskId: string;
+  workspaceId: string;
+  projectId: string;
+  assigneeId: string;
+}) {
+  const user = await getCurrentUser();
+  await taskService.addTaskAssignee(input.taskId, user.id, input.assigneeId);
   revalidateProject(input.workspaceId, input.projectId);
 }
 
