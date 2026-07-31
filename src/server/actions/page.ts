@@ -9,12 +9,14 @@ import * as pageService from "@/server/services/page";
 export async function createPageAction(input: {
   workspaceId: string;
   parentId?: string | null;
+  title?: string;
 }) {
   const user = await getCurrentUser();
   const page = await pageService.createPage({
     workspaceId: input.workspaceId,
     userId: user.id,
     parentId: input.parentId ?? null,
+    title: input.title,
   });
   revalidatePath(`/w/${input.workspaceId}`);
   redirect(`/w/${input.workspaceId}/${page.id}`);

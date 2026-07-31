@@ -25,6 +25,7 @@ import { archivePageAction, createPageAction } from "@/server/actions/page";
 import { createDatabaseAction } from "@/server/actions/database";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommandPalette } from "@/features/search/components/command-palette";
+import { NewPageButton } from "@/features/page/components/new-page-button";
 import { CreateProjectButton } from "@/features/project/components/create-project-button";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
 import { AccountMenu } from "@/features/workspace/components/account-menu";
@@ -136,18 +137,7 @@ export function Sidebar({
           </Link>
           <div data-tour="tour-create" className="space-y-0.5">
             <CreateProjectButton workspaceId={workspace.id} />
-            <button
-              onClick={() =>
-                startTransition(() =>
-                  createPageAction({ workspaceId: workspace.id }),
-                )
-              }
-              disabled={pending}
-              className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex w-full items-center gap-2 rounded-full px-3 py-1.5 text-sm disabled:opacity-50"
-            >
-              <Plus className="size-4" />
-              Nueva página
-            </button>
+            <NewPageButton workspaceId={workspace.id} />
             <button
               onClick={() =>
                 startTransition(() =>
