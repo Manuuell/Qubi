@@ -1,15 +1,9 @@
 import { prisma } from "@/lib/db";
 import { IssueStatus, Priority, ProjectStatus } from "@/generated/prisma/enums";
 import { notifyTaskAssigned } from "@/server/services/notification";
+import { assertWorkspaceMember } from "@/server/lib/permissions";
 
 // Las "tareas" son filas del modelo Issue ligadas a un proyecto (projectId).
-
-async function assertWorkspaceMember(workspaceId: string, userId: string) {
-  const member = await prisma.workspaceMember.findUnique({
-    where: { workspaceId_userId: { workspaceId, userId } },
-  });
-  if (!member) throw new Error("Sin acceso a este espacio de trabajo");
-}
 
 async function assertTaskAccess(taskId: string, userId: string) {
   const task = await prisma.issue.findUnique({

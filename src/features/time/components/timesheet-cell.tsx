@@ -9,14 +9,24 @@ export function TimesheetCell({
   projectId,
   dateKey,
   minutes,
+  editable,
 }: {
   workspaceId: string;
   projectId: string;
   dateKey: string;
   minutes: number;
+  editable: boolean;
 }) {
   const [value, setValue] = useState(minutesToHours(minutes));
   const [pending, startTransition] = useTransition();
+
+  if (!editable) {
+    return (
+      <span className="text-muted-foreground inline-flex w-12 items-center justify-center py-1.5 text-center text-sm tabular-nums">
+        {value || "–"}
+      </span>
+    );
+  }
 
   function commit() {
     const raw = value.trim().replace(",", ".");

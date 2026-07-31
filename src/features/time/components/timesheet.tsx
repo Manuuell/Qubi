@@ -8,10 +8,12 @@ export function Timesheet({
   sheet,
   workspaceId,
   todayKey,
+  editable,
 }: {
   sheet: TimesheetData;
   workspaceId: string;
   todayKey: string;
+  editable: boolean;
 }) {
   if (sheet.rows.length === 0) {
     return (
@@ -63,6 +65,7 @@ export function Timesheet({
                     projectId={row.projectId}
                     dateKey={sheet.dayKeys[i]}
                     minutes={min}
+                    editable={editable}
                   />
                 </td>
               ))}

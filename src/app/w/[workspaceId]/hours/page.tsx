@@ -27,6 +27,7 @@ import { Timesheet } from "@/features/time/components/timesheet";
 import { TeamTimesheet } from "@/features/time/components/team-timesheet";
 import { MonthlySummary } from "@/features/time/components/monthly-summary";
 import { WorkTimer } from "@/features/time/components/work-timer";
+import { isTrustedTimeEditor } from "@/server/lib/permissions";
 
 const fmt = new Intl.DateTimeFormat("es-ES", {
   day: "numeric",
@@ -116,6 +117,7 @@ export default async function HoursPage({
           anchor={anchor}
           view={view}
           userId={user.id}
+          editable={isTrustedTimeEditor(user.email)}
         />
       )}
     </div>
@@ -129,11 +131,13 @@ async function WeekView({
   anchor,
   view,
   userId,
+  editable,
 }: {
   workspaceId: string;
   anchor: string;
   view: "personal" | "team";
   userId: string;
+  editable: boolean;
 }) {
   if (view === "team") {
     const week = await getTeamWeek(workspaceId, userId, anchor);
@@ -178,11 +182,12 @@ async function WeekView({
           sheet={sheet}
           workspaceId={workspaceId}
           todayKey={todayKey()}
+          editable={editable}
         />
         <p className="text-muted-foreground mt-4 px-1 text-xs">
-          Escribe las horas en cada celda (p. ej. <code>1.5</code> = 1 h 30 min)
-          y pulsa Enter o sal del campo para guardar. El cronómetro suma su
-          tiempo al detenerse.
+          {editable
+            ? "Escribe las horas en cada celda (p. ej. 1.5 = 1 h 30 min) y pulsa Enter o sal del campo para guardar. El cronómetro suma su tiempo al detenerse."
+            : "Las horas se registran automáticamente con el cronómetro. La edición manual está reservada a los administradores de confianza del espacio."}
         </p>
       </WeekShell>
     </>

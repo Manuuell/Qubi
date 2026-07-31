@@ -1,18 +1,6 @@
 import { prisma } from "@/lib/db";
 import { WorkspaceRole } from "@/generated/prisma/enums";
-
-// Solo OWNER/ADMIN pueden gestionar miembros.
-async function assertWorkspaceAdmin(workspaceId: string, userId: string) {
-  const member = await prisma.workspaceMember.findUnique({
-    where: { workspaceId_userId: { workspaceId, userId } },
-  });
-  if (
-    !member ||
-    (member.role !== WorkspaceRole.OWNER && member.role !== WorkspaceRole.ADMIN)
-  ) {
-    throw new Error("No tienes permisos para gestionar miembros");
-  }
-}
+import { assertWorkspaceAdmin } from "@/server/lib/permissions";
 
 export function getWorkspaceMembers(workspaceId: string) {
   return prisma.workspaceMember.findMany({

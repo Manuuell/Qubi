@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { ProjectStatus, WorkspaceRole } from "@/generated/prisma/enums";
+import { ProjectStatus } from "@/generated/prisma/enums";
 import {
   addDaysToKey,
   dateToLocalKey,
@@ -9,34 +9,14 @@ import {
   mondayKeyOf,
   monthRangeKeys,
 } from "@/features/time/week";
+import {
+  assertWorkspaceAdmin,
+  assertWorkspaceMember,
+  getWorkspaceRole,
+  isTrustedTimeEditor,
+} from "@/server/lib/permissions";
 
-async function assertWorkspaceMember(workspaceId: string, userId: string) {
-  const member = await prisma.workspaceMember.findUnique({
-    where: { workspaceId_userId: { workspaceId, userId } },
-  });
-  if (!member) throw new Error("Sin acceso a este espacio de trabajo");
-}
-
-// Rol del usuario en el espacio (null si no es miembro). Lo usa la página de
-// horas para decidir si muestra las pestañas de equipo/resumen.
-export async function getWorkspaceRole(
-  workspaceId: string,
-  userId: string,
-): Promise<WorkspaceRole | null> {
-  const member = await prisma.workspaceMember.findUnique({
-    where: { workspaceId_userId: { workspaceId, userId } },
-    select: { role: true },
-  });
-  return member?.role ?? null;
-}
-
-// Las vistas de equipo y los resúmenes son solo para OWNER/ADMIN.
-async function assertWorkspaceAdmin(workspaceId: string, userId: string) {
-  const role = await getWorkspaceRole(workspaceId, userId);
-  if (role !== WorkspaceRole.OWNER && role !== WorkspaceRole.ADMIN) {
-    throw new Error("Solo el propietario o administradores pueden ver esto");
-  }
-}
+export { getWorkspaceRole };
 
 export type TimesheetRow = {
   projectId: string;
@@ -116,14 +96,23 @@ export async function getWeekTimesheet(
 
 // Fija las horas (en minutos) de un proyecto+día para el usuario.
 // Un único registro por (proyecto, usuario, día); minutos<=0 lo elimina.
+// Edición MANUAL: solo los correos de confianza pueden hacerlo (ver
+// TRUSTED_TIME_EDITOR_EMAILS). El resto solo acumula horas con el cronómetro
+// (ver addTimeEntryMinutes/stopTimer, que no pasan por esta función).
 export async function setTimesheetHours(
   workspaceId: string,
   userId: string,
+  userEmail: string | null | undefined,
   projectId: string,
   date: Date,
   minutes: number,
 ) {
   await assertWorkspaceMember(workspaceId, userId);
+  if (!isTrustedTimeEditor(userEmail)) {
+    throw new Error(
+      "Solo un administrador de confianza puede editar horas manualmente",
+    );
+  }
   const project = await prisma.project.findFirst({
     where: { id: projectId, workspaceId },
     select: { id: true },
