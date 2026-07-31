@@ -2,6 +2,7 @@
 
 import type { Property, Row } from "./database-table";
 import { formatPropertyValue } from "../format";
+import { Card } from "@/components/ui/card";
 
 export function ListView({
   properties,
@@ -17,11 +18,11 @@ export function ListView({
   }
 
   return (
-    <div className="mt-6 divide-y rounded-md border">
+    <Card variant="glass" className="divide-border/60 mt-6 gap-0 divide-y p-0">
       {rows.map((row) => (
         <div
           key={row.id}
-          className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2"
+          className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5"
         >
           <span className="text-sm font-medium">
             {row.title || "Sin título"}
@@ -37,6 +38,6 @@ export function ListView({
           })}
         </div>
       ))}
-    </div>
+    </Card>
   );
 }

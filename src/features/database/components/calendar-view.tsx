@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { addCardAction, moveCardAction } from "@/server/actions/database";
 import type { Property, Row } from "./database-table";
+import { Card } from "@/components/ui/card";
 
 const MONTHS = [
   "enero",
@@ -78,128 +79,143 @@ export function CalendarView({
     setCursor({ y: today.getFullYear(), m: today.getMonth() });
 
   const todayIso = iso(today.getFullYear(), today.getMonth(), today.getDate());
+  const monthKey = `${cursor.y}-${cursor.m}`;
 
   return (
     <div className="mt-6">
       <div className="mb-3 flex items-center gap-2">
-        <span className="text-lg font-medium capitalize">
+        <span className="font-heading text-lg font-semibold capitalize">
           {MONTHS[cursor.m]} {cursor.y}
         </span>
-        <div className="ml-auto flex items-center gap-1">
+        <div className="bg-muted ml-auto flex items-center gap-0.5 rounded-full p-1">
           <button
             onClick={prev}
             aria-label="Mes anterior"
-            className="text-muted-foreground hover:bg-accent hover:text-foreground grid size-7 place-items-center rounded"
+            className="text-muted-foreground hover:bg-card hover:text-foreground transition-ios grid size-7 place-items-center rounded-full"
           >
             <ChevronLeft className="size-4" />
           </button>
           <button
             onClick={goToday}
-            className="text-muted-foreground hover:bg-accent hover:text-foreground rounded px-2 py-1 text-sm"
+            className="text-muted-foreground hover:bg-card hover:text-foreground transition-ios rounded-full px-3 py-1 text-sm"
           >
             Hoy
           </button>
           <button
             onClick={next}
             aria-label="Mes siguiente"
-            className="text-muted-foreground hover:bg-accent hover:text-foreground grid size-7 place-items-center rounded"
+            className="text-muted-foreground hover:bg-card hover:text-foreground transition-ios grid size-7 place-items-center rounded-full"
           >
             <ChevronRight className="size-4" />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 border-t border-l">
-        {WEEKDAYS.map((d) => (
-          <div
-            key={d}
-            className="bg-muted/30 text-muted-foreground border-r border-b px-2 py-1 text-xs font-medium"
-          >
-            {d}
-          </div>
-        ))}
-        {cells.map((day, i) => {
-          if (day === null) {
-            return (
-              <div key={i} className="bg-muted/10 min-h-24 border-r border-b" />
-            );
-          }
-          const dayIso = iso(cursor.y, cursor.m, day);
-          const dayRows = rows.filter((r) => dateOf(r) === dayIso);
-          return (
+      <Card
+        variant="glass"
+        key={monthKey}
+        className="animate-in fade-in-0 slide-in-from-bottom-1 gap-0 overflow-hidden p-0 duration-300"
+      >
+        <div className="grid grid-cols-7">
+          {WEEKDAYS.map((d) => (
             <div
-              key={i}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(dayIso);
-              }}
-              onDragLeave={() => setDragOver(null)}
-              onDrop={(e: DragEvent) => {
-                e.preventDefault();
-                setDragOver(null);
-                const pageId = e.dataTransfer.getData("text/plain");
-                if (pageId) {
-                  startTransition(() =>
-                    moveCardAction({
-                      pageId,
-                      propertyId: dateProp.id,
-                      value: dayIso,
-                      databaseId,
-                      workspaceId,
-                    }),
-                  );
-                }
-              }}
-              className={cn(
-                "group min-h-24 border-r border-b p-1",
-                dragOver === dayIso && "bg-accent",
-                dayIso === todayIso && "bg-primary/5",
-              )}
+              key={d}
+              className="text-muted-foreground border-border/60 border-b py-2 text-center text-xs font-medium"
             >
-              <div className="flex items-center justify-between">
-                <span
+              {d}
+            </div>
+          ))}
+          {cells.map((day, i) => {
+            if (day === null) {
+              return (
+                <div
+                  key={i}
                   className={cn(
-                    "px-1 text-xs",
-                    dayIso === todayIso && "text-primary font-bold",
+                    "border-border/60 min-h-24 border-b",
+                    (i + 1) % 7 !== 0 && "border-r",
                   )}
-                >
-                  {day}
-                </span>
-                <button
-                  onClick={() =>
+                />
+              );
+            }
+            const dayIso = iso(cursor.y, cursor.m, day);
+            const dayRows = rows.filter((r) => dateOf(r) === dayIso);
+            return (
+              <div
+                key={i}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(dayIso);
+                }}
+                onDragLeave={() => setDragOver(null)}
+                onDrop={(e: DragEvent) => {
+                  e.preventDefault();
+                  setDragOver(null);
+                  const pageId = e.dataTransfer.getData("text/plain");
+                  if (pageId) {
                     startTransition(() =>
-                      addCardAction({
-                        databaseId,
-                        workspaceId,
+                      moveCardAction({
+                        pageId,
                         propertyId: dateProp.id,
                         value: dayIso,
+                        databaseId,
+                        workspaceId,
                       }),
-                    )
+                    );
                   }
-                  aria-label="Añadir en este día"
-                  className="text-muted-foreground hover:bg-accent-foreground/10 grid size-5 place-items-center rounded opacity-0 group-hover:opacity-100"
-                >
-                  <Plus className="size-3" />
-                </button>
-              </div>
-              <div className="space-y-1">
-                {dayRows.map((r) => (
-                  <div
-                    key={r.id}
-                    draggable
-                    onDragStart={(e) =>
-                      e.dataTransfer.setData("text/plain", r.id)
-                    }
-                    className="bg-background cursor-grab truncate rounded border px-1.5 py-0.5 text-xs shadow-sm"
+                }}
+                className={cn(
+                  "group border-border/60 transition-ios min-h-24 border-b p-1.5",
+                  (i + 1) % 7 !== 0 && "border-r",
+                  dragOver === dayIso && "bg-accent",
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <span
+                    className={cn(
+                      "transition-ios flex size-6 items-center justify-center rounded-full text-xs",
+                      dayIso === todayIso
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "text-muted-foreground",
+                    )}
                   >
-                    {r.title || "Sin título"}
-                  </div>
-                ))}
+                    {day}
+                  </span>
+                  <button
+                    onClick={() =>
+                      startTransition(() =>
+                        addCardAction({
+                          databaseId,
+                          workspaceId,
+                          propertyId: dateProp.id,
+                          value: dayIso,
+                        }),
+                      )
+                    }
+                    aria-label="Añadir en este día"
+                    className="text-muted-foreground hover:bg-accent transition-ios grid size-5 place-items-center rounded-full opacity-0 group-hover:opacity-100"
+                  >
+                    <Plus className="size-3" />
+                  </button>
+                </div>
+                <div className="mt-1 space-y-1">
+                  {dayRows.map((r) => (
+                    <div
+                      key={r.id}
+                      draggable
+                      onDragStart={(e) =>
+                        e.dataTransfer.setData("text/plain", r.id)
+                      }
+                      className="glass transition-ios cursor-grab truncate rounded-full px-2 py-0.5 text-xs active:scale-95"
+                    >
+                      {r.title || "Sin título"}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      </Card>
     </div>
   );
 }

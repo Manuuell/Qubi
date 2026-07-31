@@ -59,7 +59,7 @@ export function KanbanBoard({
   }
 
   return (
-    <div className="mt-6 flex gap-3 overflow-x-auto pb-4">
+    <div className="no-scrollbar mt-6 flex gap-3 overflow-x-auto pb-4">
       {columns.map((col) => {
         const colRows = rows.filter((r) => columnOf(r) === col);
         const label = col === NONE ? "Sin estado" : col;
@@ -73,11 +73,11 @@ export function KanbanBoard({
             onDragLeave={() => setDragOver(null)}
             onDrop={handleDrop(col)}
             className={cn(
-              "bg-muted/40 w-64 shrink-0 rounded-lg p-2",
+              "glass transition-ios w-64 shrink-0 rounded-3xl p-2.5",
               dragOver === col && "ring-primary ring-2",
             )}
           >
-            <div className="text-muted-foreground mb-2 px-1 text-xs font-medium">
+            <div className="text-muted-foreground mb-2 px-2 py-1 text-xs font-medium">
               {label} · {colRows.length}
             </div>
             <div className="space-y-2">
@@ -88,7 +88,7 @@ export function KanbanBoard({
                   onDragStart={(e) =>
                     e.dataTransfer.setData("text/plain", r.id)
                   }
-                  className="bg-background cursor-grab rounded-md border px-3 py-2 text-sm shadow-sm active:cursor-grabbing"
+                  className="bg-card transition-ios cursor-grab rounded-2xl px-3 py-2 text-sm shadow-sm active:scale-[0.98] active:cursor-grabbing"
                 >
                   {r.title || "Sin título"}
                 </div>
@@ -105,7 +105,7 @@ export function KanbanBoard({
                   }),
                 )
               }
-              className="text-muted-foreground hover:bg-accent hover:text-foreground mt-2 flex w-full items-center gap-1 rounded px-2 py-1 text-xs transition-colors"
+              className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios mt-2 flex w-full items-center gap-1 rounded-full px-2.5 py-1.5 text-xs"
             >
               <Plus className="size-3.5" />
               Añadir

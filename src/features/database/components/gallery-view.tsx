@@ -21,7 +21,7 @@ export function GalleryView({
       {rows.map((row) => (
         <div
           key={row.id}
-          className="bg-background rounded-lg border p-3 shadow-sm"
+          className="bg-card transition-ios rounded-2xl p-4 shadow-sm hover:shadow-md"
         >
           <div className="mb-2 text-sm font-medium">
             {row.title || "Sin título"}
