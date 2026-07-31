@@ -1,9 +1,18 @@
 import Link from "next/link";
-import { CalendarCheck, Clock, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarCheck,
+  Clock,
+  Trophy,
+  Users,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth";
+import { WorkspaceRole } from "@/generated/prisma/enums";
 import { listMyTasks } from "@/server/services/task";
 import { listProjects } from "@/server/services/project";
-import { getWeekTimesheet } from "@/server/services/time";
+import { getWeekTimesheet, getWorkspaceRole } from "@/server/services/time";
+import { getTeamOverview } from "@/server/services/manager";
 import { WEEKDAY_LABELS, hoursLabel, todayKey } from "@/features/time/week";
 import { AgendaTaskRow } from "@/features/task/components/agenda-task-row";
 import { Card } from "@/components/ui/card";
@@ -18,18 +27,81 @@ function firstName(name: string | null, email: string) {
   return (name?.trim().split(" ")[0] || email.split("@")[0]) ?? "";
 }
 
+const HOME_TABS = [
+  { key: "me", label: "Mi resumen" },
+  { key: "team", label: "Equipo" },
+] as const;
+
 export default async function WorkspaceHome({
   params,
+  searchParams,
 }: {
   params: Promise<{ workspaceId: string }>;
+  searchParams: Promise<{ view?: string }>;
 }) {
   const { workspaceId } = await params;
+  const { view: rawView } = await searchParams;
   const user = await getCurrentUser();
 
+  const role = await getWorkspaceRole(workspaceId, user.id);
+  const isAdmin = role === WorkspaceRole.OWNER || role === WorkspaceRole.ADMIN;
+  const view = isAdmin && rawView === "team" ? "team" : "me";
+
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-10 sm:py-12">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-muted-foreground text-sm capitalize">
+            {DATE_FMT.format(new Date())}
+          </p>
+          <h1 className="font-heading mt-1 text-3xl font-bold tracking-tight">
+            Hola, {firstName(user.name, user.email)}
+          </h1>
+        </div>
+        {isAdmin && (
+          <div className="bg-muted inline-flex items-center gap-0.5 rounded-full p-1 text-sm">
+            {HOME_TABS.map((t) => (
+              <Link
+                key={t.key}
+                href={
+                  t.key === "me"
+                    ? `/w/${workspaceId}`
+                    : `/w/${workspaceId}?view=team`
+                }
+                className={cn(
+                  "transition-ios rounded-full px-4 py-1.5",
+                  view === t.key
+                    ? "bg-card text-foreground font-medium shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {t.label}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {view === "team" ? (
+        <TeamHome workspaceId={workspaceId} userId={user.id} />
+      ) : (
+        <PersonalHome workspaceId={workspaceId} userId={user.id} />
+      )}
+    </div>
+  );
+}
+
+async function PersonalHome({
+  workspaceId,
+  userId,
+}: {
+  workspaceId: string;
+  userId: string;
+}) {
   const [tasks, projects, week] = await Promise.all([
-    listMyTasks(workspaceId, user.id),
+    listMyTasks(workspaceId, userId),
     listProjects(workspaceId),
-    getWeekTimesheet(workspaceId, user.id),
+    getWeekTimesheet(workspaceId, userId),
   ]);
 
   const today = todayKey();
@@ -40,14 +112,9 @@ export default async function WorkspaceHome({
   });
   const upcoming = tasks.slice(0, 5);
   const maxDay = Math.max(1, ...week.dayTotals);
-  const dateLabel = DATE_FMT.format(new Date());
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-10 sm:py-12">
-      <p className="text-muted-foreground text-sm capitalize">{dateLabel}</p>
-      <h1 className="font-heading mt-1 text-3xl font-bold tracking-tight">
-        Hola, {firstName(user.name, user.email)}
-      </h1>
+    <>
       <p className="text-muted-foreground mt-1 text-sm">
         ¿Por dónde quieres empezar hoy?
       </p>
@@ -214,6 +281,162 @@ export default async function WorkspaceHome({
           )}
         </Card>
       </div>
-    </div>
+    </>
+  );
+}
+
+const dayTimeFmt = new Intl.DateTimeFormat("es-ES", {
+  hour: "2-digit",
+  minute: "2-digit",
+});
+const dueFmt = new Intl.DateTimeFormat("es-ES", {
+  day: "numeric",
+  month: "short",
+});
+
+async function TeamHome({
+  workspaceId,
+  userId,
+}: {
+  workspaceId: string;
+  userId: string;
+}) {
+  const overview = await getTeamOverview(workspaceId, userId);
+
+  return (
+    <>
+      <p className="text-muted-foreground mt-1 text-sm">
+        Cómo va el equipo ahora mismo.
+      </p>
+
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <Card variant="glass" className="gap-1">
+          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            Trabajando ahora
+          </p>
+          <p className="font-heading text-2xl font-semibold tabular-nums">
+            {overview.activeNow.length}
+          </p>
+        </Card>
+        <Card variant="glass" className="gap-1">
+          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            Horas del equipo (semana)
+          </p>
+          <p className="font-heading text-2xl font-semibold tabular-nums">
+            {hoursLabel(overview.weekMinutes)} h
+          </p>
+        </Card>
+        <Card variant="glass" className="gap-1">
+          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            Tareas completadas (semana)
+          </p>
+          <p className="font-heading text-2xl font-semibold tabular-nums">
+            {overview.tasksCompletedThisWeek}
+          </p>
+        </Card>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card variant="glass" className="gap-3 p-0 lg:col-span-2">
+          <div className="flex items-center gap-2 px-5 pt-5">
+            <span className="relative flex size-2">
+              <span className="bg-primary/60 absolute inline-flex size-full animate-ping rounded-full" />
+              <span className="bg-primary relative inline-flex size-2 rounded-full" />
+            </span>
+            <p className="text-sm font-medium">Trabajando ahora</p>
+          </div>
+          {overview.activeNow.length === 0 ? (
+            <p className="text-muted-foreground px-5 pb-5 text-sm">
+              Nadie tiene el cronómetro activo en este momento.
+            </p>
+          ) : (
+            <div className="divide-border/60 divide-y pb-1">
+              {overview.activeNow.map((w) => (
+                <div
+                  key={w.userId}
+                  className="flex items-center justify-between gap-2 px-5 py-2.5 text-sm"
+                >
+                  <span className="min-w-0 truncate">
+                    {w.name?.trim() || w.email}
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {w.projectName}
+                    </span>
+                  </span>
+                  <span className="text-muted-foreground shrink-0 text-xs">
+                    {w.paused
+                      ? "En pausa"
+                      : `desde ${dayTimeFmt.format(new Date(w.startedAt))}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card variant="glass" className="gap-2 p-0">
+          <div className="flex items-center gap-2 px-5 pt-5">
+            <Trophy className="text-muted-foreground size-4" />
+            <p className="text-sm font-medium">Top de la semana</p>
+          </div>
+          {overview.completedByMember.length === 0 ? (
+            <p className="text-muted-foreground px-5 pb-5 text-sm">
+              Nadie ha completado tareas esta semana.
+            </p>
+          ) : (
+            <div className="divide-border/60 divide-y pb-1">
+              {overview.completedByMember.slice(0, 6).map((m) => (
+                <div
+                  key={m.userId}
+                  className="flex items-center justify-between gap-2 px-5 py-2.5 text-sm"
+                >
+                  <span className="min-w-0 truncate">
+                    {m.name?.trim() || m.email}
+                  </span>
+                  <span className="text-muted-foreground shrink-0 text-xs">
+                    {m.count} {m.count === 1 ? "tarea" : "tareas"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <Card variant="glass" className="mt-4 gap-3 p-0">
+        <div className="flex items-center gap-2 px-5 pt-5">
+          <AlertTriangle className="text-destructive size-4" />
+          <p className="text-sm font-medium">Tareas vencidas</p>
+        </div>
+        {overview.overdueTasks.length === 0 ? (
+          <p className="text-muted-foreground px-5 pb-5 text-sm">
+            No hay tareas vencidas sin terminar. 🎉
+          </p>
+        ) : (
+          <div className="divide-border/60 divide-y pb-1">
+            {overview.overdueTasks.map((t) => (
+              <Link
+                key={t.id}
+                href={`/w/${workspaceId}/projects/${t.projectId}`}
+                className="hover:bg-accent/40 transition-ios flex items-center justify-between gap-2 px-5 py-2.5 text-sm"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <span
+                    className="size-2.5 shrink-0 rounded-full"
+                    style={{ background: t.projectColor ?? "#888888" }}
+                  />
+                  <span className="truncate">{t.title || "Sin título"}</span>
+                </span>
+                {t.dueDate && (
+                  <span className="text-destructive shrink-0 text-xs font-medium">
+                    {dueFmt.format(new Date(t.dueDate))}
+                  </span>
+                )}
+              </Link>
+            ))}
+          </div>
+        )}
+      </Card>
+    </>
   );
 }

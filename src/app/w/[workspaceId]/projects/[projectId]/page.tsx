@@ -1,13 +1,23 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { LayoutGrid, List, Calendar, GanttChartSquare } from "lucide-react";
+import {
+  LayoutGrid,
+  List,
+  Calendar,
+  GanttChartSquare,
+  BarChart3,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth";
+import { WorkspaceRole } from "@/generated/prisma/enums";
 import { getProject } from "@/server/services/project";
 import { listProjectTasks } from "@/server/services/task";
 import { getWorkspaceMembers } from "@/server/services/member";
+import { getWorkspaceRole } from "@/server/services/time";
+import { getProjectProduction } from "@/server/services/manager";
 import { ProjectTitle } from "@/features/project/components/project-title";
 import { ArchiveProjectButton } from "@/features/project/components/archive-project-button";
+import { ProjectProduction } from "@/features/project/components/project-production";
 import { QuickAddTask } from "@/features/task/components/quick-add-task";
 import { TaskBoard } from "@/features/task/components/task-board";
 import { TaskList } from "@/features/task/components/task-list";
@@ -19,6 +29,12 @@ const VIEWS = [
   { key: "list", label: "Lista", icon: List },
   { key: "calendar", label: "Calendario", icon: Calendar },
   { key: "gantt", label: "Cronograma", icon: GanttChartSquare },
+  {
+    key: "production",
+    label: "Producción",
+    icon: BarChart3,
+    adminOnly: true,
+  },
 ] as const;
 
 export default async function ProjectPage({
@@ -30,6 +46,15 @@ export default async function ProjectPage({
 }) {
   const { workspaceId, projectId } = await params;
   const { view: rawView } = await searchParams;
+  const user = await getCurrentUser();
+
+  const [project, role] = await Promise.all([
+    getProject(projectId, user.id),
+    getWorkspaceRole(workspaceId, user.id),
+  ]);
+  if (!project || project.workspaceId !== workspaceId) notFound();
+  const isAdmin = role === WorkspaceRole.OWNER || role === WorkspaceRole.ADMIN;
+
   const view =
     rawView === "list"
       ? "list"
@@ -37,11 +62,9 @@ export default async function ProjectPage({
         ? "calendar"
         : rawView === "gantt"
           ? "gantt"
-          : "board";
-  const user = await getCurrentUser();
-
-  const project = await getProject(projectId, user.id);
-  if (!project || project.workspaceId !== workspaceId) notFound();
+          : rawView === "production" && isAdmin
+            ? "production"
+            : "board";
 
   const [tasks, members] = await Promise.all([
     listProjectTasks(projectId, user.id),
@@ -79,7 +102,7 @@ export default async function ProjectPage({
 
       <div className="no-scrollbar mt-6 max-w-full overflow-x-auto">
         <div className="bg-muted inline-flex w-max items-center gap-0.5 rounded-full p-1 text-sm">
-          {VIEWS.map((v) => {
+          {VIEWS.filter((v) => !("adminOnly" in v) || isAdmin).map((v) => {
             const active = view === v.key;
             const href =
               v.key === "board"
@@ -130,7 +153,32 @@ export default async function ProjectPage({
             workspaceId={workspaceId}
           />
         )}
+        {view === "production" && isAdmin && (
+          <ProductionTab
+            projectId={projectId}
+            workspaceId={workspaceId}
+            userId={user.id}
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+async function ProductionTab({
+  projectId,
+  workspaceId,
+  userId,
+}: {
+  projectId: string;
+  workspaceId: string;
+  userId: string;
+}) {
+  const production = await getProjectProduction(projectId, workspaceId, userId);
+  return (
+    <ProjectProduction
+      members={production.members}
+      recentCompleted={production.recentCompleted}
+    />
   );
 }
