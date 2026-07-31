@@ -44,7 +44,7 @@ export function TimesheetCell({
       onKeyDown={onKeyDown}
       aria-label="Horas"
       placeholder="–"
-      className="hover:bg-accent focus:ring-ring w-12 rounded bg-transparent px-1 py-1 text-center text-sm outline-none focus:ring-1 disabled:opacity-50"
+      className="hover:bg-accent focus:ring-ring transition-ios w-12 rounded-full bg-transparent px-1 py-1.5 text-center text-sm outline-none focus:ring-2 disabled:opacity-50"
     />
   );
 }
