@@ -226,9 +226,15 @@ export async function addTaskComment(
   taskId: string,
   userId: string,
   body: string,
+  attachmentUrl?: string | null,
 ) {
   await assertTaskAccess(taskId, userId);
   return prisma.issueComment.create({
-    data: { issueId: taskId, authorId: userId, body: body.trim() },
+    data: {
+      issueId: taskId,
+      authorId: userId,
+      body: body.trim(),
+      attachmentUrl: attachmentUrl ?? null,
+    },
   });
 }

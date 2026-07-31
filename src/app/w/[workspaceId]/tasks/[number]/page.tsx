@@ -160,7 +160,15 @@ export default async function TaskDetailPage({
                 <RoleBadge role={roleByUserId[c.author.id]} />
               )}
             </div>
-            <p className="text-sm whitespace-pre-wrap">{c.body}</p>
+            {c.body && <p className="text-sm whitespace-pre-wrap">{c.body}</p>}
+            {c.attachmentUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={c.attachmentUrl}
+                alt="Captura adjunta"
+                className="mt-1 max-h-64 w-auto rounded-xl border object-contain"
+              />
+            )}
           </Card>
         ))}
         <TaskCommentForm

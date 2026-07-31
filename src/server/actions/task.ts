@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { IssueStatus, Priority } from "@/generated/prisma/enums";
 import * as taskService from "@/server/services/task";
+import { uploadFile } from "@/lib/storage";
+
+const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 
 function revalidateProject(workspaceId: string, projectId: string) {
   revalidatePath(`/w/${workspaceId}/projects/${projectId}`);
@@ -110,14 +113,26 @@ export async function setTaskBodyAction(input: {
   revalidateProject(input.workspaceId, input.projectId);
 }
 
-export async function addTaskCommentAction(input: {
-  taskId: string;
-  workspaceId: string;
-  projectId: string;
-  body: string;
-}) {
-  if (!input.body.trim()) return;
+export async function addTaskCommentAction(formData: FormData) {
+  const taskId = String(formData.get("taskId") ?? "");
+  const workspaceId = String(formData.get("workspaceId") ?? "");
+  const projectId = String(formData.get("projectId") ?? "");
+  const body = String(formData.get("body") ?? "");
+  const file = formData.get("file");
+
+  let attachmentUrl: string | null = null;
+  if (file instanceof File && file.size > 0) {
+    if (!file.type.startsWith("image/")) {
+      throw new Error("El adjunto debe ser una imagen.");
+    }
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      throw new Error("La imagen no puede superar 8 MB.");
+    }
+    attachmentUrl = await uploadFile(file);
+  }
+
+  if (!body.trim() && !attachmentUrl) return;
   const user = await getCurrentUser();
-  await taskService.addTaskComment(input.taskId, user.id, input.body);
-  revalidateProject(input.workspaceId, input.projectId);
+  await taskService.addTaskComment(taskId, user.id, body, attachmentUrl);
+  revalidateProject(workspaceId, projectId);
 }
