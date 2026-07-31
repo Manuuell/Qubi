@@ -1,5 +1,10 @@
 import { IssueStatus, IssueType, Priority } from "@/generated/prisma/enums";
 
+// Una tarea admite hasta esta cantidad de responsables. Vive fuera de
+// server/services/task.ts para poder importarse desde componentes cliente
+// sin arrastrar Prisma/pg al bundle del navegador.
+export const MAX_ASSIGNEES = 3;
+
 // Etiquetas y orden de los estados (columnas del tablero).
 export const STATUS_LABEL: Record<IssueStatus, string> = {
   TODO: "Por hacer",

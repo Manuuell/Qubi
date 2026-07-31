@@ -69,24 +69,35 @@ export function TaskStatusSelect({
 
   return (
     <>
-      <Select value={status} disabled={pending} onValueChange={onValueChange}>
-        <SelectTrigger aria-label="Estado de la tarea" className="text-xs">
-          <span
-            className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[status])}
-          />
-          <SelectValue>{(v: IssueStatus) => STATUS_LABEL[v]}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {STATUS_ORDER.map((s) => (
-            <SelectItem key={s} value={s}>
-              <span
-                className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[s])}
-              />
-              {STATUS_LABEL[s]}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="flex flex-col items-start gap-1">
+        <Select value={status} disabled={pending} onValueChange={onValueChange}>
+          <SelectTrigger aria-label="Estado de la tarea" className="text-xs">
+            <span
+              className={cn(
+                "size-1.5 shrink-0 rounded-full",
+                STATUS_DOT[status],
+              )}
+            />
+            <SelectValue>{(v: IssueStatus) => STATUS_LABEL[v]}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_ORDER.map((s) => (
+              <SelectItem key={s} value={s}>
+                <span
+                  className={cn(
+                    "size-1.5 shrink-0 rounded-full",
+                    STATUS_DOT[s],
+                  )}
+                />
+                {STATUS_LABEL[s]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {error && !askingEvidence && (
+          <p className="text-destructive text-xs">{error}</p>
+        )}
+      </div>
 
       <Dialog open={askingEvidence} onOpenChange={setAskingEvidence}>
         <DialogContent>

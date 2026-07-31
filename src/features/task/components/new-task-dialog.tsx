@@ -8,8 +8,8 @@ import {
   addTaskAttachmentAction,
 } from "@/server/actions/task";
 import { createLabelAction } from "@/server/actions/label";
-import { MAX_ASSIGNEES } from "@/server/services/task";
 import {
+  MAX_ASSIGNEES,
   TYPE_LABEL,
   TYPE_ORDER,
   TYPE_ICON,

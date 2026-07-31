@@ -15,10 +15,13 @@ import {
   assertWorkspaceMember,
   assertWorkspaceAdmin,
 } from "@/server/lib/permissions";
+import { MAX_ASSIGNEES } from "@/features/task/labels";
 
 // Las "tareas" son filas del modelo Issue ligadas a un proyecto (projectId).
-// Una tarea admite hasta 3 personas asignadas (tabla puente IssueAssignee).
-export const MAX_ASSIGNEES = 3;
+// Una tarea admite hasta 3 personas asignadas (tabla puente IssueAssignee);
+// el límite vive en features/task/labels.ts para poder importarlo desde el
+// cliente sin arrastrar Prisma al bundle del navegador.
+export { MAX_ASSIGNEES };
 
 const personSelect = {
   id: true,

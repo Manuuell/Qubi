@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { Users } from "lucide-react";
 import { setTaskAssigneesAction } from "@/server/actions/task";
-import { MAX_ASSIGNEES } from "@/server/services/task";
+import { MAX_ASSIGNEES } from "@/features/task/labels";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/features/task/labels";
 import {
