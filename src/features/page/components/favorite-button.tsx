@@ -27,7 +27,7 @@ export function FavoriteButton({
         startTransition(() => toggleFavoriteAction({ pageId, workspaceId }));
       }}
       className={cn(
-        "hover:bg-accent grid size-8 place-items-center rounded-md border",
+        "glass hover:bg-accent/40 transition-ios grid size-9 place-items-center rounded-full",
         fav && "text-gold",
       )}
     >

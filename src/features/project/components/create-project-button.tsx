@@ -20,7 +20,7 @@ export function CreateProjectButton({ workspaceId }: { workspaceId: string }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="text-muted-foreground hover:bg-accent hover:text-foreground flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors"
+        className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex w-full items-center gap-2 rounded-full px-3 py-1.5 text-sm"
       >
         <FolderPlus className="size-4" />
         Nuevo proyecto
@@ -39,7 +39,7 @@ export function CreateProjectButton({ workspaceId }: { workspaceId: string }) {
         }}
         placeholder="Nombre del proyecto…"
         disabled={pending}
-        className="border-input bg-background focus:ring-ring w-full rounded-md border px-2 py-1 text-sm outline-none focus:ring-1"
+        className="border-input bg-background focus:ring-ring transition-ios w-full rounded-full border px-3 py-1.5 text-sm outline-none focus:ring-2"
       />
     </form>
   );

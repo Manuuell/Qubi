@@ -41,7 +41,7 @@ export function SharePanel({
       </Button>
 
       {open && (
-        <div className="bg-background absolute right-0 z-20 mt-2 w-80 rounded-lg border p-4 text-left shadow-lg">
+        <div className="glass-strong animate-in fade-in-0 zoom-in-95 absolute right-0 z-20 mt-2 w-80 rounded-3xl p-4 text-left duration-150">
           <div className="flex items-start gap-3">
             {isPublic ? (
               <Globe className="text-primary mt-0.5 size-5" />
@@ -71,13 +71,13 @@ export function SharePanel({
                 )
               }
               className={
-                "relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50 " +
+                "transition-ios relative h-5 w-9 shrink-0 rounded-full disabled:opacity-50 " +
                 (isPublic ? "bg-primary" : "bg-muted-foreground/30")
               }
             >
               <span
                 className={
-                  "bg-background absolute top-0.5 size-4 rounded-full transition-all " +
+                  "bg-background transition-ios absolute top-0.5 size-4 rounded-full " +
                   (isPublic ? "left-[18px]" : "left-0.5")
                 }
               />
@@ -89,7 +89,7 @@ export function SharePanel({
               <input
                 readOnly
                 value={publicUrl}
-                className="bg-muted/40 min-w-0 flex-1 rounded border px-2 py-1 text-xs outline-none"
+                className="bg-muted/60 min-w-0 flex-1 rounded-full border-none px-3 py-1.5 text-xs outline-none"
               />
               <Button size="sm" variant="secondary" onClick={copy}>
                 {copied ? <Check className="size-4" /> : "Copiar"}
@@ -108,7 +108,7 @@ export function SharePanel({
                   className="flex items-center justify-between gap-2 text-xs"
                 >
                   <span className="min-w-0 truncate">{m.name}</span>
-                  <span className="bg-muted text-muted-foreground shrink-0 rounded px-1.5 py-0.5 text-[10px]">
+                  <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-2 py-0.5 text-[10px]">
                     {m.role}
                   </span>
                 </li>
