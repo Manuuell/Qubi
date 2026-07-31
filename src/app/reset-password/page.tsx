@@ -10,7 +10,7 @@ export default async function ResetPasswordPage({
   const { token } = await searchParams;
 
   return (
-    <div className="bg-muted/30 flex min-h-screen items-center justify-center p-4">
+    <div className="bg-board bg-background flex min-h-screen items-center justify-center p-4">
       <ResetPasswordForm token={token ?? ""} />
     </div>
   );

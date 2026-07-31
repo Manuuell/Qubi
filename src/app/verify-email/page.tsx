@@ -12,9 +12,9 @@ export default async function VerifyEmailPage({
   const { token } = await searchParams;
 
   return (
-    <div className="bg-muted/30 flex min-h-screen items-center justify-center p-4">
-      <div className="bg-background w-full max-w-sm space-y-6 rounded-xl border p-8 text-center shadow-sm">
-        <div className="font-display text-3xl font-bold tracking-tight">
+    <div className="bg-board bg-background flex min-h-screen items-center justify-center p-4">
+      <div className="glass-strong w-full max-w-sm space-y-6 rounded-3xl p-8 text-center">
+        <div className="font-heading text-3xl font-bold tracking-tight">
           Qubi
         </div>
 

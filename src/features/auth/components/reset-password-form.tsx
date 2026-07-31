@@ -12,9 +12,9 @@ export function ResetPasswordForm({ token }: { token: string }) {
   });
 
   return (
-    <div className="bg-background w-full max-w-sm space-y-6 rounded-xl border p-8 shadow-sm">
+    <div className="glass-strong w-full max-w-sm space-y-6 rounded-3xl p-8">
       <div className="space-y-2 text-center">
-        <div className="font-display text-3xl font-bold tracking-tight">
+        <div className="font-heading text-3xl font-bold tracking-tight">
           Qubi
         </div>
         <p className="text-muted-foreground text-sm">

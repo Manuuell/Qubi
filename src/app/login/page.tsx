@@ -33,7 +33,7 @@ export default async function LoginPage({
       : undefined;
 
   return (
-    <div className="bg-muted/30 flex min-h-screen items-center justify-center p-4">
+    <div className="bg-board bg-background flex min-h-screen items-center justify-center p-4">
       <LoginForm
         googleEnabled={googleEnabled}
         addMode={addMode}

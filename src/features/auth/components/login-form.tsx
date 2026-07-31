@@ -45,13 +45,13 @@ export function LoginForm({
   }
 
   return (
-    <div className="bg-background w-full max-w-sm space-y-6 rounded-xl border p-8 shadow-sm">
+    <div className="glass-strong w-full max-w-sm space-y-6 rounded-3xl p-8">
       <div className="space-y-2 text-center">
         <div
           aria-hidden
-          className="chess-pattern border-border mx-auto size-9 rounded-md border"
+          className="chess-pattern border-border mx-auto size-10 rounded-2xl border"
         />
-        <div className="font-display text-3xl font-bold tracking-tight">
+        <div className="font-heading text-3xl font-bold tracking-tight">
           Qubi
         </div>
         <p className="text-muted-foreground text-sm">
@@ -64,13 +64,13 @@ export function LoginForm({
       </div>
 
       {notice && (
-        <p className="bg-muted/50 rounded-md border px-3 py-2 text-center text-sm">
+        <p className="bg-muted/50 rounded-2xl border px-3 py-2 text-center text-sm">
           {notice}
         </p>
       )}
 
       {addMode && (
-        <div className="bg-muted/50 text-muted-foreground rounded-md border px-3 py-2 text-center text-xs">
+        <div className="bg-muted/50 text-muted-foreground rounded-2xl border px-3 py-2 text-center text-xs">
           Tu sesión actual sigue abierta. Podrás cambiar entre cuentas desde el
           menú.{" "}
           <Link href="/" className="text-foreground underline">
@@ -81,7 +81,7 @@ export function LoginForm({
 
       {/* Registro completado: confirma por correo antes de entrar. */}
       {state?.info ? (
-        <p className="bg-muted/50 rounded-md border px-3 py-3 text-center text-sm">
+        <p className="bg-muted/50 rounded-2xl border px-3 py-3 text-center text-sm">
           {state.info}
         </p>
       ) : (
@@ -130,7 +130,7 @@ export function LoginForm({
 
             {/* Credenciales correctas pero correo sin verificar. */}
             {isLogin && loginState?.needsVerification && (
-              <div className="bg-muted/50 space-y-2 rounded-md border px-3 py-2 text-sm">
+              <div className="bg-muted/50 space-y-2 rounded-2xl border px-3 py-2 text-sm">
                 <p>Confirma tu correo para poder entrar.</p>
                 {resendInfo ? (
                   <p className="text-muted-foreground text-xs">{resendInfo}</p>
