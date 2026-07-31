@@ -194,14 +194,44 @@ function cellXml(ref: string, cell: Cell): string {
   )}</t></is></c>`;
 }
 
-// Altura extra para títulos y encabezados, que llevan letra más grande.
-function rowHeight(row: Cell[]): string {
+// Cuántas líneas ocupa un texto ajustado al ancho de su columna (el ancho de
+// Excel se mide en caracteres, así que basta con partir por palabras).
+function wrappedLines(text: string, width: number): number {
+  // -2 caracteres de margen: la letra es proporcional y el ancho de Excel se
+  // mide en dígitos, así que conviene quedarse corto antes que pasarse.
+  const max = Math.max(Math.floor(width) - 2, 1);
+  let lines = 1;
+  let used = 0;
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    if (used === 0) used = word.length;
+    else if (used + 1 + word.length <= max) used += 1 + word.length;
+    else {
+      lines++;
+      used = word.length;
+    }
+    // Palabra más larga que la columna: se corta en varias líneas.
+    while (used > max) {
+      lines++;
+      used -= max;
+    }
+  }
+  return lines;
+}
+
+// Altura de fila: los encabezados crecen para que quepan los nombres largos.
+function rowHeight(row: Cell[], columns: number[]): string {
   const styles = row.map((c) => normalize(c).style);
   if (styles.includes("title")) return ' ht="22" customHeight="1"';
-  if (styles.includes("header") || styles.includes("headerCenter")) {
-    return ' ht="20" customHeight="1"';
-  }
-  return "";
+  if (!styles.some((s) => s === "header" || s === "headerCenter")) return "";
+
+  let lines = 1;
+  row.forEach((cell, i) => {
+    const { value, style } = normalize(cell);
+    // Solo "headerCenter" ajusta el texto (wrapText); el resto va en una línea.
+    if (style !== "headerCenter" || typeof value !== "string") return;
+    lines = Math.max(lines, wrappedLines(value, columns[i] ?? 10));
+  });
+  return ` ht="${Math.min(lines, 4) * 15 + 5}" customHeight="1"`;
 }
 
 function sheetXml(sheet: SheetSpec): string {
@@ -232,7 +262,7 @@ function sheetXml(sheet: SheetSpec): string {
       const cells = row
         .map((cell, j) => cellXml(`${columnName(j + 1)}${i + 1}`, cell))
         .join("");
-      return `<row r="${i + 1}"${rowHeight(row)}>${cells}</row>`;
+      return `<row r="${i + 1}"${rowHeight(row, sheet.columns)}>${cells}</row>`;
     })
     .join("");
 
@@ -264,7 +294,7 @@ const STYLES_XML =
   `${XML_HEADER}<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
   `<numFmts count="2">` +
   `<numFmt numFmtId="164" formatCode="dd/mm/yyyy"/>` +
-  `<numFmt numFmtId="165" formatCode="0.##"/>` +
+  `<numFmt numFmtId="165" formatCode="0.00"/>` +
   `</numFmts>` +
   `<fonts count="5">` +
   `<font><sz val="11"/><color theme="1"/><name val="Calibri"/></font>` +

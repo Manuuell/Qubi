@@ -68,8 +68,7 @@ function summarySheet(
         { value: p.name, style: "text" },
         ...summary.members.map((m): Cell => {
           const minutes = summary.matrix[`${p.id}|${m.id}`] ?? 0;
-          // Celda vacía en vez de 0: se lee mucho mejor de un vistazo.
-          return { value: minutes ? toHours(minutes) : null, style: "hours" };
+          return { value: toHours(minutes), style: "hours" };
         }),
         { value: toHours(p.total), style: "hours" },
       ]);
@@ -86,7 +85,7 @@ function summarySheet(
 
   return {
     name: "Resumen",
-    columns: [32, ...summary.members.map(() => 15), 12],
+    columns: [32, ...summary.members.map(() => 16), 12],
     rows,
     freeze: { rows: 4, columns: 1 },
     merges: [`A1:${lastCol}1`, `A2:${lastCol}2`],
