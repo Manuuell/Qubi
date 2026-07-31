@@ -2,8 +2,17 @@
 
 import { useTransition } from "react";
 import { setTaskAssigneeAction } from "@/server/actions/task";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type MemberOption = { id: string; name: string | null; email: string };
+
+const UNASSIGNED = "__unassigned__";
 
 export function TaskAssigneeSelect({
   taskId,
@@ -19,30 +28,39 @@ export function TaskAssigneeSelect({
   members: MemberOption[];
 }) {
   const [pending, startTransition] = useTransition();
+  const labelOf = (id: string) =>
+    members.find((m) => m.id === id)?.name?.trim() ||
+    members.find((m) => m.id === id)?.email ||
+    "Sin asignar";
 
   return (
-    <select
-      value={assigneeId ?? ""}
+    <Select
+      value={assigneeId ?? UNASSIGNED}
       disabled={pending}
-      aria-label="Responsable de la tarea"
-      onChange={(e) =>
+      onValueChange={(value) =>
         startTransition(() =>
           setTaskAssigneeAction({
             taskId,
             workspaceId,
             projectId,
-            assigneeId: e.target.value || null,
+            assigneeId: value === UNASSIGNED ? null : value,
           }),
         )
       }
-      className="border-input bg-background hover:bg-accent cursor-pointer rounded border px-1.5 py-0.5 text-xs outline-none disabled:opacity-50"
     >
-      <option value="">Sin asignar</option>
-      {members.map((m) => (
-        <option key={m.id} value={m.id}>
-          {m.name?.trim() || m.email}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger aria-label="Responsable de la tarea" className="text-xs">
+        <SelectValue>
+          {(v: string) => (v === UNASSIGNED ? "Sin asignar" : labelOf(v))}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={UNASSIGNED}>Sin asignar</SelectItem>
+        {members.map((m) => (
+          <SelectItem key={m.id} value={m.id}>
+            {m.name?.trim() || m.email}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

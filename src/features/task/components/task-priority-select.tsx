@@ -4,6 +4,13 @@ import { useTransition } from "react";
 import { Priority } from "@/generated/prisma/enums";
 import { PRIORITY_LABEL, PRIORITY_ORDER } from "@/features/task/labels";
 import { setTaskPriorityAction } from "@/server/actions/task";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function TaskPrioritySelect({
   taskId,
@@ -19,27 +26,30 @@ export function TaskPrioritySelect({
   const [pending, startTransition] = useTransition();
 
   return (
-    <select
+    <Select
       value={priority}
       disabled={pending}
-      aria-label="Prioridad de la tarea"
-      onChange={(e) =>
+      onValueChange={(value) =>
         startTransition(() =>
           setTaskPriorityAction({
             taskId,
             workspaceId,
             projectId,
-            priority: e.target.value as Priority,
+            priority: value as Priority,
           }),
         )
       }
-      className="border-input bg-background hover:bg-accent cursor-pointer rounded border px-1.5 py-0.5 text-xs outline-none disabled:opacity-50"
     >
-      {PRIORITY_ORDER.map((p) => (
-        <option key={p} value={p}>
-          {PRIORITY_LABEL[p]}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger aria-label="Prioridad de la tarea" className="text-xs">
+        <SelectValue>{(v: Priority) => PRIORITY_LABEL[v]}</SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {PRIORITY_ORDER.map((p) => (
+          <SelectItem key={p} value={p}>
+            {PRIORITY_LABEL[p]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

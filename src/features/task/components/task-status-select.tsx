@@ -2,8 +2,16 @@
 
 import { useTransition } from "react";
 import { IssueStatus } from "@/generated/prisma/enums";
-import { STATUS_LABEL, STATUS_ORDER } from "@/features/task/labels";
+import { STATUS_DOT, STATUS_LABEL, STATUS_ORDER } from "@/features/task/labels";
 import { setTaskStatusAction } from "@/server/actions/task";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 export function TaskStatusSelect({
   taskId,
@@ -19,27 +27,36 @@ export function TaskStatusSelect({
   const [pending, startTransition] = useTransition();
 
   return (
-    <select
+    <Select
       value={status}
       disabled={pending}
-      aria-label="Estado de la tarea"
-      onChange={(e) =>
+      onValueChange={(value) =>
         startTransition(() =>
           setTaskStatusAction({
             taskId,
             workspaceId,
             projectId,
-            status: e.target.value as IssueStatus,
+            status: value as IssueStatus,
           }),
         )
       }
-      className="border-input bg-background hover:bg-accent cursor-pointer rounded border px-1.5 py-0.5 text-xs outline-none disabled:opacity-50"
     >
-      {STATUS_ORDER.map((s) => (
-        <option key={s} value={s}>
-          {STATUS_LABEL[s]}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger aria-label="Estado de la tarea" className="text-xs">
+        <span
+          className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[status])}
+        />
+        <SelectValue>{(v: IssueStatus) => STATUS_LABEL[v]}</SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {STATUS_ORDER.map((s) => (
+          <SelectItem key={s} value={s}>
+            <span
+              className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[s])}
+            />
+            {STATUS_LABEL[s]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
