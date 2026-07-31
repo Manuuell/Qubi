@@ -10,6 +10,7 @@ import {
   Database,
   FileText,
   HelpCircle,
+  Home,
   Plus,
   Star,
   Table,
@@ -80,6 +81,8 @@ export function Sidebar({
   inbox: Inbox;
 }) {
   const tree = buildTree(pages);
+  const pageTree = tree.filter((n) => n.type !== "DATABASE");
+  const databaseTree = tree.filter((n) => n.type === "DATABASE");
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
   const { start: startTour } = useOnboarding();
@@ -119,6 +122,18 @@ export function Sidebar({
           <div data-tour="tour-search">
             <CommandPalette />
           </div>
+          <Link
+            href={`/w/${workspace.id}`}
+            data-tour="tour-home"
+            onClick={() => setOpen(false)}
+            className={cn(
+              "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
+              pathname === `/w/${workspace.id}` && "bg-primary/10 text-primary",
+            )}
+          >
+            <Home className="size-4" />
+            Inicio
+          </Link>
           <div data-tour="tour-create" className="space-y-0.5">
             <CreateProjectButton workspaceId={workspace.id} />
             <button
@@ -218,12 +233,30 @@ export function Sidebar({
           <p className="text-muted-foreground px-3 py-1 text-[11px] font-medium tracking-wide uppercase">
             Páginas
           </p>
-          {tree.length === 0 ? (
+          {pageTree.length === 0 ? (
             <p className="text-muted-foreground px-3 py-4 text-xs">
               Sin páginas todavía.
             </p>
           ) : (
-            tree.map((node) => (
+            pageTree.map((node) => (
+              <PageRow
+                key={node.id}
+                node={node}
+                workspaceId={workspace.id}
+                depth={0}
+              />
+            ))
+          )}
+
+          <p className="text-muted-foreground mt-3 px-3 py-1 text-[11px] font-medium tracking-wide uppercase">
+            Bases de datos
+          </p>
+          {databaseTree.length === 0 ? (
+            <p className="text-muted-foreground px-3 py-4 text-xs">
+              Sin bases de datos todavía.
+            </p>
+          ) : (
+            databaseTree.map((node) => (
               <PageRow
                 key={node.id}
                 node={node}

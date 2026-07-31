@@ -16,6 +16,11 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     body: "Encuentra páginas y bases de datos al instante con ⌘K (o Ctrl K en Windows).",
   },
   {
+    target: "tour-home",
+    title: "Vuelve al inicio",
+    body: "Este botón te trae de regreso al panel principal del espacio desde cualquier parte de Qubi.",
+  },
+  {
     target: "tour-create",
     title: "Crea contenido",
     body: "Un proyecto agrupa tareas con tablero, lista, calendario y cronograma. Las páginas son para notas y documentos, y las bases de datos organizan información en tablas, tableros, calendarios o galerías.",
