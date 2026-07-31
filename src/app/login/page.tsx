@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { LoginForm } from "@/features/auth/components/login-form";
+import { GuestAccountsCard } from "@/features/auth/components/guest-accounts-card";
 
 export const dynamic = "force-dynamic";
 
@@ -33,12 +34,13 @@ export default async function LoginPage({
       : undefined;
 
   return (
-    <div className="bg-board bg-background flex min-h-screen items-center justify-center p-4">
+    <div className="bg-board bg-background flex min-h-screen flex-col items-center justify-center gap-4 p-4">
       <LoginForm
         googleEnabled={googleEnabled}
         addMode={addMode}
         notice={notice}
       />
+      {!addMode && <GuestAccountsCard />}
     </div>
   );
 }
