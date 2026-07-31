@@ -9,6 +9,7 @@ import {
   getMonthlySummary,
   getTeamWeek,
   getWeekTimesheet,
+  getWorkProgress,
   getWorkspaceRole,
 } from "@/server/services/time";
 import {
@@ -26,6 +27,7 @@ import { Timesheet } from "@/features/time/components/timesheet";
 import { TeamTimesheet } from "@/features/time/components/team-timesheet";
 import { MonthlySummary } from "@/features/time/components/monthly-summary";
 import { WorkTimer } from "@/features/time/components/work-timer";
+import { DailyProgress } from "@/features/time/components/daily-progress";
 import { isTrustedTimeEditor } from "@/server/lib/permissions";
 
 const fmt = new Intl.DateTimeFormat("es-ES", {
@@ -33,11 +35,16 @@ const fmt = new Intl.DateTimeFormat("es-ES", {
   month: "short",
 });
 
-const TABS = [
+const TABS: {
+  key: "personal" | "progress" | "team" | "summary";
+  label: string;
+  adminOnly?: boolean;
+}[] = [
   { key: "personal", label: "Tus horas" },
-  { key: "team", label: "Equipo" },
-  { key: "summary", label: "Resumen" },
-] as const;
+  { key: "progress", label: "Avances" },
+  { key: "team", label: "Equipo", adminOnly: true },
+  { key: "summary", label: "Resumen", adminOnly: true },
+];
 
 export default async function HoursPage({
   params,
@@ -56,14 +63,15 @@ export default async function HoursPage({
   const role = await getWorkspaceRole(workspaceId, user.id);
   const isAdmin = role === WorkspaceRole.OWNER || role === WorkspaceRole.ADMIN;
 
-  // Las pestañas de equipo/resumen son solo para admins.
-  let view: "personal" | "team" | "summary" =
-    rawView === "team"
-      ? "team"
-      : rawView === "summary"
-        ? "summary"
-        : "personal";
-  if (!isAdmin) view = "personal";
+  let view: "personal" | "progress" | "team" | "summary" =
+    rawView === "progress"
+      ? "progress"
+      : rawView === "team"
+        ? "team"
+        : rawView === "summary"
+          ? "summary"
+          : "personal";
+  if (!isAdmin && (view === "team" || view === "summary")) view = "personal";
 
   const anchor = isValidKey(week) ? week : mondayKeyOf();
   const monthAnchor = isValidMonthKey(month) ? month : monthKeyOf();
@@ -79,35 +87,39 @@ export default async function HoursPage({
         </h1>
       </div>
 
-      {isAdmin && (
-        <div className="bg-muted mt-6 inline-flex items-center gap-0.5 rounded-full p-1 text-sm">
-          {TABS.map((t) => {
-            const href =
-              t.key === "personal"
-                ? `/w/${workspaceId}/hours`
-                : `/w/${workspaceId}/hours?view=${t.key}`;
-            return (
-              <Link
-                key={t.key}
-                href={href}
-                className={cn(
-                  "transition-ios rounded-full px-4 py-1.5",
-                  view === t.key
-                    ? "bg-card text-foreground font-medium shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t.label}
-              </Link>
-            );
-          })}
-        </div>
-      )}
+      <div className="bg-muted no-scrollbar mt-6 inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full p-1 text-sm">
+        {TABS.filter((t) => !t.adminOnly || isAdmin).map((t) => {
+          const href =
+            t.key === "personal"
+              ? `/w/${workspaceId}/hours`
+              : `/w/${workspaceId}/hours?view=${t.key}`;
+          return (
+            <Link
+              key={t.key}
+              href={href}
+              className={cn(
+                "transition-ios shrink-0 rounded-full px-4 py-1.5 whitespace-nowrap",
+                view === t.key
+                  ? "bg-card text-foreground font-medium shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t.label}
+            </Link>
+          );
+        })}
+      </div>
 
       {view === "summary" ? (
         <MonthView
           workspaceId={workspaceId}
           monthKey={monthAnchor}
+          userId={user.id}
+        />
+      ) : view === "progress" ? (
+        <ProgressView
+          workspaceId={workspaceId}
+          anchor={anchor}
           userId={user.id}
         />
       ) : (
@@ -120,6 +132,30 @@ export default async function HoursPage({
         />
       )}
     </div>
+  );
+}
+
+// ── Vista de avances (sesiones de cronómetro + notas, agrupadas por día) ───
+
+async function ProgressView({
+  workspaceId,
+  anchor,
+  userId,
+}: {
+  workspaceId: string;
+  anchor: string;
+  userId: string;
+}) {
+  const progress = await getWorkProgress(workspaceId, userId, userId, anchor);
+  return (
+    <WeekShell
+      workspaceId={workspaceId}
+      view="progress"
+      weekStartKey={progress.weekStartKey}
+      dayKeys={progress.dayKeys}
+    >
+      <DailyProgress days={progress.days} />
+    </WeekShell>
   );
 }
 
@@ -195,7 +231,7 @@ function WeekShell({
   children,
 }: {
   workspaceId: string;
-  view: "personal" | "team";
+  view: "personal" | "team" | "progress";
   weekStartKey: string;
   dayKeys: string[];
   children: React.ReactNode;
@@ -207,11 +243,11 @@ function WeekShell({
     keyToLocalDate(dayKeys[6]),
   )}`;
   const base =
-    view === "team"
-      ? `/w/${workspaceId}/hours?view=team&`
-      : `/w/${workspaceId}/hours?`;
+    view === "personal"
+      ? `/w/${workspaceId}/hours?`
+      : `/w/${workspaceId}/hours?view=${view}&`;
   const thisWeekHref =
-    view === "team" ? `${base}week=${thisWeek}` : `/w/${workspaceId}/hours`;
+    view === "personal" ? `/w/${workspaceId}/hours` : `${base}week=${thisWeek}`;
 
   return (
     <>
