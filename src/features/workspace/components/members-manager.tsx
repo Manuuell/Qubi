@@ -4,6 +4,15 @@ import { useState, useTransition, type FormEvent } from "react";
 import { MailQuestion, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { WorkspaceRole } from "@/generated/prisma/enums";
 import {
   RoleBadge,
@@ -104,14 +113,14 @@ export function MembersManager({
 
       {invites.length > 0 && (
         <div>
-          <p className="text-muted-foreground mb-2 text-[11px] font-medium tracking-wide uppercase">
+          <p className="text-muted-foreground mb-2 px-1 text-[11px] font-medium tracking-wide uppercase">
             Invitaciones pendientes
           </p>
-          <ul className="divide-y rounded-md border">
+          <Card variant="glass" className="divide-border/60 gap-0 divide-y p-0">
             {invites.map((i) => (
-              <li
+              <div
                 key={i.id}
-                className="flex items-center justify-between gap-2 px-3 py-2"
+                className="flex items-center justify-between gap-2 px-4 py-2.5"
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <MailQuestion className="text-muted-foreground size-4 shrink-0" />
@@ -127,71 +136,84 @@ export function MembersManager({
                     }
                     disabled={pending}
                     aria-label={`Revocar invitación a ${i.email}`}
-                    className="text-muted-foreground hover:bg-accent hover:text-foreground grid size-7 place-items-center rounded disabled:opacity-50"
+                    className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios grid size-7 place-items-center rounded-full disabled:opacity-50"
                   >
                     <X className="size-3.5" />
                   </button>
                 )}
-              </li>
+              </div>
             ))}
-          </ul>
+          </Card>
         </div>
       )}
 
       <div>
-        <p className="text-muted-foreground mb-2 text-[11px] font-medium tracking-wide uppercase">
+        <p className="text-muted-foreground mb-2 px-1 text-[11px] font-medium tracking-wide uppercase">
           Miembros ({members.length})
         </p>
-        <ul className="divide-y rounded-md border">
+        <Card variant="glass" className="divide-border/60 gap-0 divide-y p-0">
           {members.map((m) => {
             const isSelf = m.userId === currentUserId;
             const isTargetOwner = m.role === WorkspaceRole.OWNER;
             const canChangeRole = isOwner && !isSelf && !isTargetOwner;
             const canRemove = isAdmin && !isSelf && !isTargetOwner;
+            const initial = (
+              m.name?.trim()?.charAt(0) || m.email.charAt(0)
+            ).toUpperCase();
 
             return (
-              <li
+              <div
                 key={m.userId}
-                className="flex items-center justify-between gap-2 px-3 py-2.5"
+                className="flex items-center justify-between gap-3 px-4 py-2.5"
               >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-medium">
-                      {m.name || m.email}
-                    </p>
-                    {isSelf && (
-                      <span className="text-muted-foreground text-[11px]">
-                        (tú)
-                      </span>
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <Avatar>
+                    <AvatarFallback>{initial}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-medium">
+                        {m.name || m.email}
+                      </p>
+                      {isSelf && (
+                        <span className="text-muted-foreground text-[11px]">
+                          (tú)
+                        </span>
+                      )}
+                    </div>
+                    {m.name && (
+                      <p className="text-muted-foreground truncate text-xs">
+                        {m.email}
+                      </p>
                     )}
                   </div>
-                  {m.name && (
-                    <p className="text-muted-foreground truncate text-xs">
-                      {m.email}
-                    </p>
-                  )}
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2">
                   {canChangeRole ? (
-                    <select
+                    <Select
                       value={m.role}
                       disabled={pending}
-                      aria-label={`Rol de ${m.name || m.email}`}
-                      onChange={(e) =>
-                        handleRoleChange(
-                          m.userId,
-                          e.target.value as WorkspaceRole,
-                        )
+                      onValueChange={(value) =>
+                        handleRoleChange(m.userId, value as WorkspaceRole)
                       }
-                      className="border-input bg-background hover:bg-accent cursor-pointer rounded border px-1.5 py-0.5 text-xs outline-none disabled:opacity-50"
                     >
-                      {ASSIGNABLE_ROLES.map((r) => (
-                        <option key={r} value={r}>
-                          {ROLE_LABEL[r]}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger
+                        aria-label={`Rol de ${m.name || m.email}`}
+                        className="text-xs"
+                      >
+                        <SelectValue>
+                          {(v: WorkspaceRole) => ROLE_LABEL[v]}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ASSIGNABLE_ROLES.map((r) => (
+                          <SelectItem key={r} value={r}>
+                            {ROLE_LABEL[r]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   ) : (
                     <RoleBadge role={m.role} />
                   )}
@@ -208,16 +230,16 @@ export function MembersManager({
                       }
                       disabled={pending}
                       aria-label={`Quitar a ${m.name || m.email}`}
-                      className="text-muted-foreground hover:bg-accent hover:text-foreground grid size-7 place-items-center rounded disabled:opacity-50"
+                      className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios grid size-7 place-items-center rounded-full disabled:opacity-50"
                     >
                       <Trash2 className="size-3.5" />
                     </button>
                   )}
                 </div>
-              </li>
+              </div>
             );
           })}
-        </ul>
+        </Card>
       </div>
     </div>
   );
