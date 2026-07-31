@@ -2,7 +2,7 @@ import { Download } from "lucide-react";
 import type { MonthlySummary as MonthlySummaryData } from "@/server/services/time";
 import { hoursLabel } from "@/features/time/week";
 
-// Resumen mensual: matriz proyecto × miembro con totales, y descarga CSV.
+// Resumen mensual: matriz proyecto × miembro con totales, y descarga en Excel.
 export function MonthlySummary({
   summary,
   workspaceId,
@@ -20,7 +20,7 @@ export function MonthlySummary({
           className="hover:bg-accent inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm"
         >
           <Download className="size-4" />
-          Descargar CSV
+          Descargar Excel
         </a>
       </div>
 

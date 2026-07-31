@@ -247,7 +247,7 @@ function WeekShell({
   );
 }
 
-// ── Vista mensual (resumen + CSV) ───────────────────────────────────────────
+// ── Vista mensual (resumen + Excel) ─────────────────────────────────────────
 
 async function MonthView({
   workspaceId,
