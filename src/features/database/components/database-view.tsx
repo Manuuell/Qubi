@@ -35,7 +35,7 @@ export function DatabaseView({
 
   return (
     <div>
-      <div className="mt-4 flex gap-1 border-b">
+      <div className="bg-muted mt-4 inline-flex flex-wrap items-center gap-0.5 rounded-full p-1">
         <Tab active={view === "table"} onClick={() => setView("table")}>
           <Table2 className="size-4" />
           Tabla
@@ -66,36 +66,41 @@ export function DatabaseView({
         onSortChange={setSort}
       />
 
-      {view === "table" && (
-        <DatabaseTable
-          databaseId={databaseId}
-          workspaceId={workspaceId}
-          properties={properties}
-          rows={visibleRows}
-        />
-      )}
-      {view === "board" && (
-        <KanbanBoard
-          databaseId={databaseId}
-          workspaceId={workspaceId}
-          properties={properties}
-          rows={visibleRows}
-        />
-      )}
-      {view === "calendar" && (
-        <CalendarView
-          databaseId={databaseId}
-          workspaceId={workspaceId}
-          properties={properties}
-          rows={visibleRows}
-        />
-      )}
-      {view === "list" && (
-        <ListView properties={properties} rows={visibleRows} />
-      )}
-      {view === "gallery" && (
-        <GalleryView properties={properties} rows={visibleRows} />
-      )}
+      <div
+        key={view}
+        className="animate-in fade-in-0 slide-in-from-bottom-1 duration-200"
+      >
+        {view === "table" && (
+          <DatabaseTable
+            databaseId={databaseId}
+            workspaceId={workspaceId}
+            properties={properties}
+            rows={visibleRows}
+          />
+        )}
+        {view === "board" && (
+          <KanbanBoard
+            databaseId={databaseId}
+            workspaceId={workspaceId}
+            properties={properties}
+            rows={visibleRows}
+          />
+        )}
+        {view === "calendar" && (
+          <CalendarView
+            databaseId={databaseId}
+            workspaceId={workspaceId}
+            properties={properties}
+            rows={visibleRows}
+          />
+        )}
+        {view === "list" && (
+          <ListView properties={properties} rows={visibleRows} />
+        )}
+        {view === "gallery" && (
+          <GalleryView properties={properties} rows={visibleRows} />
+        )}
+      </div>
     </div>
   );
 }
@@ -113,10 +118,10 @@ function Tab({
     <button
       onClick={onClick}
       className={cn(
-        "-mb-px flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-sm transition-colors",
+        "transition-ios flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm",
         active
-          ? "border-foreground font-medium"
-          : "text-muted-foreground hover:text-foreground border-transparent",
+          ? "bg-card text-foreground font-medium shadow-sm"
+          : "text-muted-foreground hover:text-foreground",
       )}
     >
       {children}

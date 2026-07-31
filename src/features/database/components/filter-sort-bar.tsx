@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownUp, Plus, X } from "lucide-react";
+import { ArrowDownUp, ArrowUp, ArrowDown, Plus, X } from "lucide-react";
 import type { Property } from "./database-table";
 import {
   OPERATORS,
@@ -9,11 +9,20 @@ import {
   type Filter,
   type Sort,
 } from "../filter-sort";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type PropType = Property["type"];
 
-const ctrl =
-  "rounded border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring";
+const NO_SORT = "__none__";
+
+const inputCls =
+  "rounded-full border bg-background px-2.5 py-1 text-xs outline-none transition-ios focus:ring-2 focus:ring-ring";
 
 function defaultValue(type: PropType) {
   return type === "CHECKBOX" ? "true" : "";
@@ -65,27 +74,37 @@ export function FilterSortBar({
     <div className="mt-4 flex flex-wrap items-center gap-3 text-xs">
       <div className="flex items-center gap-1">
         <ArrowDownUp className="text-muted-foreground size-3.5" />
-        <select
-          className={ctrl}
-          value={sort?.field ?? ""}
-          onChange={(e) =>
+        <Select
+          value={sort?.field ?? NO_SORT}
+          onValueChange={(value) =>
             onSortChange(
-              e.target.value
-                ? { field: e.target.value, dir: sort?.dir ?? "asc" }
-                : null,
+              !value || value === NO_SORT
+                ? null
+                : { field: value, dir: sort?.dir ?? "asc" },
             )
           }
         >
-          <option value="">Sin orden</option>
-          {fields.map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.label}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="text-xs">
+            <SelectValue>
+              {(v: string) =>
+                v === NO_SORT
+                  ? "Sin orden"
+                  : (fields.find((f) => f.value === v)?.label ?? v)
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_SORT}>Sin orden</SelectItem>
+            {fields.map((f) => (
+              <SelectItem key={f.value} value={f.value}>
+                {f.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {sort && (
           <button
-            className={ctrl}
+            className={inputCls}
             onClick={() =>
               onSortChange({
                 ...sort,
@@ -93,7 +112,12 @@ export function FilterSortBar({
               })
             }
           >
-            {sort.dir === "asc" ? "↑ Asc" : "↓ Desc"}
+            {sort.dir === "asc" ? (
+              <ArrowUp className="inline size-3" />
+            ) : (
+              <ArrowDown className="inline size-3" />
+            )}{" "}
+            {sort.dir === "asc" ? "Asc" : "Desc"}
           </button>
         )}
       </div>
@@ -106,64 +130,94 @@ export function FilterSortBar({
         return (
           <div
             key={f.id}
-            className="bg-muted/30 flex items-center gap-1 rounded border px-1 py-0.5"
+            className="bg-muted/30 flex items-center gap-1 rounded-full border px-1.5 py-1"
           >
-            <select
-              className={ctrl}
+            <Select
               value={f.field}
-              onChange={(e) => {
-                const t = typeOf(e.target.value);
+              onValueChange={(value) => {
+                if (!value) return;
+                const t = typeOf(value);
                 updateFilter(f.id, {
-                  field: e.target.value,
+                  field: value,
                   op: OPERATORS[t][0].value,
                   value: defaultValue(t),
                 });
               }}
             >
-              {fields.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger variant="ghost" className="text-xs">
+                <SelectValue>
+                  {(v: string) => fields.find((o) => o.value === v)?.label ?? v}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {fields.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            <select
-              className={ctrl}
+            <Select
               value={f.op}
-              onChange={(e) => updateFilter(f.id, { op: e.target.value })}
+              onValueChange={(value) =>
+                value && updateFilter(f.id, { op: value })
+              }
             >
-              {OPERATORS[type].map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger variant="ghost" className="text-xs">
+                <SelectValue>
+                  {(v: string) =>
+                    OPERATORS[type].find((o) => o.value === v)?.label ?? v
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {OPERATORS[type].map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             {type === "CHECKBOX" ? (
-              <select
-                className={ctrl}
+              <Select
                 value={f.value}
-                onChange={(e) => updateFilter(f.id, { value: e.target.value })}
+                onValueChange={(value) =>
+                  value != null && updateFilter(f.id, { value })
+                }
               >
-                <option value="true">Marcado</option>
-                <option value="false">Sin marcar</option>
-              </select>
+                <SelectTrigger variant="ghost" className="text-xs">
+                  <SelectValue>
+                    {(v: string) => (v === "true" ? "Marcado" : "Sin marcar")}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Marcado</SelectItem>
+                  <SelectItem value="false">Sin marcar</SelectItem>
+                </SelectContent>
+              </Select>
             ) : type === "SELECT" ? (
-              <select
-                className={ctrl}
+              <Select
                 value={f.value}
-                onChange={(e) => updateFilter(f.id, { value: e.target.value })}
+                onValueChange={(value) =>
+                  value != null && updateFilter(f.id, { value })
+                }
               >
-                <option value="">—</option>
-                {options.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger variant="ghost" className="text-xs">
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent>
+                  {options.map((o) => (
+                    <SelectItem key={o} value={o}>
+                      {o}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             ) : (
               <input
-                className={ctrl}
+                className={inputCls}
                 type={
                   type === "NUMBER"
                     ? "number"
@@ -180,7 +234,7 @@ export function FilterSortBar({
             <button
               onClick={() => removeFilter(f.id)}
               aria-label="Quitar filtro"
-              className="text-muted-foreground hover:bg-accent hover:text-foreground grid size-5 place-items-center rounded"
+              className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios grid size-5 place-items-center rounded-full"
             >
               <X className="size-3.5" />
             </button>
@@ -190,7 +244,7 @@ export function FilterSortBar({
 
       <button
         onClick={addFilter}
-        className="text-muted-foreground hover:bg-accent hover:text-foreground flex items-center gap-1 rounded px-2 py-1 transition-colors"
+        className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-1 rounded-full px-2.5 py-1"
       >
         <Plus className="size-3.5" />
         Filtro

@@ -20,6 +20,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const TYPE_LABELS: Record<PropType, string> = {
   TEXT: "Texto",
@@ -58,7 +65,7 @@ export function DatabaseTable({
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="mt-6 overflow-x-auto">
+    <div className="no-scrollbar mt-6 overflow-x-auto">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b">
@@ -83,7 +90,10 @@ export function DatabaseTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id} className="group hover:bg-muted/20 border-b">
+            <tr
+              key={row.id}
+              className="group hover:bg-muted/20 animate-in fade-in-0 border-b duration-200"
+            >
               <td className="px-1">
                 <RowTitle pageId={row.id} title={row.title} />
               </td>
@@ -105,7 +115,7 @@ export function DatabaseTable({
                   }
                   disabled={pending}
                   aria-label="Eliminar fila"
-                  className="text-muted-foreground hover:bg-accent hover:text-foreground grid size-6 place-items-center rounded opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                  className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios grid size-6 place-items-center rounded-full opacity-0 group-hover:opacity-100 disabled:opacity-50"
                 >
                   <Trash2 className="size-3.5" />
                 </button>
@@ -120,7 +130,7 @@ export function DatabaseTable({
           startTransition(() => addRowAction({ databaseId, workspaceId }))
         }
         disabled={pending}
-        className="text-muted-foreground hover:bg-accent hover:text-foreground mt-2 flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors disabled:opacity-50"
+        className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios mt-2 flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm disabled:opacity-50"
       >
         <Plus className="size-4" />
         Nueva fila
@@ -142,7 +152,7 @@ function AddColumnMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="Añadir columna"
-        className="text-muted-foreground hover:bg-accent hover:text-foreground grid size-6 place-items-center rounded"
+        className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios grid size-6 place-items-center rounded-full"
       >
         <Plus className="size-4" />
       </DropdownMenuTrigger>
@@ -199,7 +209,7 @@ function PropertyHeader({
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label="Opciones de columna"
-            className="text-muted-foreground hover:bg-accent hover:text-foreground grid size-6 shrink-0 place-items-center rounded"
+            className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios grid size-6 shrink-0 place-items-center rounded-full"
           >
             <ChevronDown className="size-3.5" />
           </DropdownMenuTrigger>
@@ -446,22 +456,26 @@ function SelectCell({
   const [value, setValue] = useState(initial);
   const [, startTransition] = useTransition();
   return (
-    <select
+    <Select
       value={value}
-      onChange={(e) => {
-        setValue(e.target.value);
+      onValueChange={(v) => {
+        const next = v ?? "";
+        setValue(next);
         startTransition(() =>
-          setCellAction({ pageId, propertyId, value: e.target.value }),
+          setCellAction({ pageId, propertyId, value: next }),
         );
       }}
-      className={inputCls}
     >
-      <option value="">—</option>
-      {options.map((o) => (
-        <option key={o} value={o}>
-          {o}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger variant="ghost" className="w-full text-sm">
+        <SelectValue placeholder="—" />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o} value={o}>
+            {o}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
