@@ -127,7 +127,7 @@ export async function getMemberProfile(
       prisma.issue.count({
         where: {
           workspaceId,
-          assigneeId: targetUserId,
+          assignees: { some: { userId: targetUserId } },
           status: IssueStatus.DONE,
         },
       }),

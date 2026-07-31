@@ -80,8 +80,12 @@ export async function getTeamOverview(
         completedAt: { gte: weekStart, lt: weekEnd },
       },
       select: {
-        assigneeId: true,
-        assignee: { select: { name: true, email: true } },
+        assignees: {
+          select: {
+            userId: true,
+            user: { select: { name: true, email: true } },
+          },
+        },
       },
     }),
     prisma.issue.findMany({
@@ -108,14 +112,15 @@ export async function getTeamOverview(
     { name: string | null; email: string; count: number }
   >();
   for (const t of doneThisWeek) {
-    if (!t.assigneeId || !t.assignee) continue;
-    const cur = completedMap.get(t.assigneeId) ?? {
-      name: t.assignee.name,
-      email: t.assignee.email,
-      count: 0,
-    };
-    cur.count += 1;
-    completedMap.set(t.assigneeId, cur);
+    for (const a of t.assignees) {
+      const cur = completedMap.get(a.userId) ?? {
+        name: a.user.name,
+        email: a.user.email,
+        count: 0,
+      };
+      cur.count += 1;
+      completedMap.set(a.userId, cur);
+    }
   }
 
   return {
@@ -160,7 +165,7 @@ export type CompletedTaskEntry = {
   number: number;
   title: string;
   completedAt: Date | null;
-  assignee: { name: string | null; email: string } | null;
+  assignees: { name: string | null; email: string }[];
   evidenceCount: number;
 };
 
@@ -188,10 +193,9 @@ export async function getProjectProduction(
       where: { projectId, date: { gte: monthStart, lt: monthEnd } },
       select: { userId: true, minutes: true },
     }),
-    prisma.issue.groupBy({
-      by: ["assigneeId"],
-      where: { projectId, status: IssueStatus.DONE, assigneeId: { not: null } },
-      _count: { _all: true },
+    prisma.issue.findMany({
+      where: { projectId, status: IssueStatus.DONE },
+      select: { assignees: { select: { userId: true } } },
     }),
     prisma.issue.findMany({
       where: { projectId, status: IssueStatus.DONE },
@@ -200,7 +204,9 @@ export async function getProjectProduction(
         number: true,
         title: true,
         completedAt: true,
-        assignee: { select: { name: true, email: true } },
+        assignees: {
+          select: { user: { select: { name: true, email: true } } },
+        },
         comments: { select: { attachmentUrl: true } },
       },
       orderBy: { completedAt: "desc" },
@@ -212,9 +218,12 @@ export async function getProjectProduction(
   for (const e of timeEntries) {
     minutesByUser.set(e.userId, (minutesByUser.get(e.userId) ?? 0) + e.minutes);
   }
-  const countByUser = new Map<string, number>(
-    doneCounts.map((d) => [d.assigneeId!, d._count._all]),
-  );
+  const countByUser = new Map<string, number>();
+  for (const d of doneCounts) {
+    for (const a of d.assignees) {
+      countByUser.set(a.userId, (countByUser.get(a.userId) ?? 0) + 1);
+    }
+  }
 
   const memberRows = members
     .map((m) => ({
@@ -234,7 +243,7 @@ export async function getProjectProduction(
       number: t.number,
       title: t.title,
       completedAt: t.completedAt,
-      assignee: t.assignee,
+      assignees: t.assignees.map((a) => a.user),
       evidenceCount: t.comments.filter((c) => c.attachmentUrl).length,
     })),
   };

@@ -55,13 +55,21 @@ export function TaskCard({
       {task.body.trim() && <TaskCardDescription body={task.body.trim()} />}
 
       <div className="text-muted-foreground mt-2 flex items-center gap-2 text-xs">
-        {task.assignee ? (
+        {task.assignees.length > 0 ? (
           <span className="flex min-w-0 items-center gap-1">
-            <span className="bg-primary/10 grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-medium">
-              {initials(task.assignee.name, task.assignee.email)}
+            <span className="flex -space-x-1.5">
+              {task.assignees.map((a) => (
+                <span
+                  key={a.id}
+                  className="bg-primary/10 ring-card grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-medium ring-2"
+                  title={a.name?.trim() || a.email}
+                >
+                  {initials(a.name, a.email)}
+                </span>
+              ))}
             </span>
             <span className="truncate">
-              {task.assignee.name?.trim() || task.assignee.email}
+              {task.assignees.map((a) => a.name?.trim() || a.email).join(", ")}
             </span>
           </span>
         ) : (

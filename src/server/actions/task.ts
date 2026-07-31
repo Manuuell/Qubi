@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
-import { IssueStatus, Priority } from "@/generated/prisma/enums";
+import {
+  IssueStatus,
+  IssueType,
+  IssueCommentKind,
+  Priority,
+} from "@/generated/prisma/enums";
 import * as taskService from "@/server/services/task";
 import { uploadFile } from "@/lib/storage";
 
@@ -18,7 +23,14 @@ export async function createTaskAction(input: {
   workspaceId: string;
   projectId: string;
   title: string;
-  assigneeId?: string | null;
+  body?: string;
+  type?: IssueType;
+  priority?: Priority;
+  assigneeIds?: string[];
+  labelIds?: string[];
+  dueDate?: string | null;
+  startDate?: string | null;
+  linkedPageId?: string | null;
 }) {
   if (!input.title.trim()) return;
   const user = await getCurrentUser();
@@ -27,7 +39,14 @@ export async function createTaskAction(input: {
     projectId: input.projectId,
     userId: user.id,
     title: input.title,
-    assigneeId: input.assigneeId ?? null,
+    body: input.body,
+    type: input.type,
+    priority: input.priority,
+    assigneeIds: input.assigneeIds,
+    labelIds: input.labelIds,
+    dueDate: input.dueDate ? new Date(`${input.dueDate}T00:00:00`) : null,
+    startDate: input.startDate ? new Date(`${input.startDate}T00:00:00`) : null,
+    linkedPageId: input.linkedPageId,
   });
   revalidateProject(input.workspaceId, input.projectId);
 }
@@ -37,20 +56,58 @@ export async function setTaskStatusAction(input: {
   workspaceId: string;
   projectId: string;
   status: IssueStatus;
+  note?: string;
 }) {
   const user = await getCurrentUser();
-  await taskService.setTaskStatus(input.taskId, user.id, input.status);
+  await taskService.setTaskStatus(
+    input.taskId,
+    user.id,
+    input.status,
+    input.note,
+  );
   revalidateProject(input.workspaceId, input.projectId);
 }
 
-export async function setTaskAssigneeAction(input: {
+export async function startTaskAction(input: {
   taskId: string;
   workspaceId: string;
   projectId: string;
-  assigneeId: string | null;
 }) {
   const user = await getCurrentUser();
-  await taskService.setTaskAssignee(input.taskId, user.id, input.assigneeId);
+  await taskService.startTask(input.taskId, user.id);
+  revalidateProject(input.workspaceId, input.projectId);
+}
+
+export async function setTaskAssigneesAction(input: {
+  taskId: string;
+  workspaceId: string;
+  projectId: string;
+  assigneeIds: string[];
+}) {
+  const user = await getCurrentUser();
+  await taskService.setTaskAssignees(input.taskId, user.id, input.assigneeIds);
+  revalidateProject(input.workspaceId, input.projectId);
+}
+
+export async function setTaskLabelsAction(input: {
+  taskId: string;
+  workspaceId: string;
+  projectId: string;
+  labelIds: string[];
+}) {
+  const user = await getCurrentUser();
+  await taskService.setTaskLabels(input.taskId, user.id, input.labelIds);
+  revalidateProject(input.workspaceId, input.projectId);
+}
+
+export async function setTaskTypeAction(input: {
+  taskId: string;
+  workspaceId: string;
+  projectId: string;
+  type: IssueType;
+}) {
+  const user = await getCurrentUser();
+  await taskService.setTaskType(input.taskId, user.id, input.type);
   revalidateProject(input.workspaceId, input.projectId);
 }
 
@@ -113,26 +170,118 @@ export async function setTaskBodyAction(input: {
   revalidateProject(input.workspaceId, input.projectId);
 }
 
+export async function linkTaskPageAction(input: {
+  taskId: string;
+  workspaceId: string;
+  projectId: string;
+  linkedPageId: string | null;
+}) {
+  const user = await getCurrentUser();
+  await taskService.linkTaskPage(input.taskId, user.id, input.linkedPageId);
+  revalidateProject(input.workspaceId, input.projectId);
+}
+
+async function extractAttachment(formData: FormData) {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return null;
+  if (!file.type.startsWith("image/")) {
+    throw new Error("El adjunto debe ser una imagen.");
+  }
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    throw new Error("La imagen no puede superar 8 MB.");
+  }
+  return uploadFile(file);
+}
+
 export async function addTaskCommentAction(formData: FormData) {
   const taskId = String(formData.get("taskId") ?? "");
   const workspaceId = String(formData.get("workspaceId") ?? "");
   const projectId = String(formData.get("projectId") ?? "");
   const body = String(formData.get("body") ?? "");
-  const file = formData.get("file");
-
-  let attachmentUrl: string | null = null;
-  if (file instanceof File && file.size > 0) {
-    if (!file.type.startsWith("image/")) {
-      throw new Error("El adjunto debe ser una imagen.");
-    }
-    if (file.size > MAX_ATTACHMENT_BYTES) {
-      throw new Error("La imagen no puede superar 8 MB.");
-    }
-    attachmentUrl = await uploadFile(file);
-  }
+  const attachmentUrl = await extractAttachment(formData);
 
   if (!body.trim() && !attachmentUrl) return;
   const user = await getCurrentUser();
   await taskService.addTaskComment(taskId, user.id, body, attachmentUrl);
   revalidateProject(workspaceId, projectId);
+}
+
+// Avance documentado mientras la tarea está en curso (nota + captura opcional).
+export async function addTaskProgressAction(formData: FormData) {
+  const taskId = String(formData.get("taskId") ?? "");
+  const workspaceId = String(formData.get("workspaceId") ?? "");
+  const projectId = String(formData.get("projectId") ?? "");
+  const body = String(formData.get("body") ?? "");
+  const attachmentUrl = await extractAttachment(formData);
+
+  if (!body.trim() && !attachmentUrl) return;
+  const user = await getCurrentUser();
+  await taskService.addTaskComment(
+    taskId,
+    user.id,
+    body,
+    attachmentUrl,
+    IssueCommentKind.PROGRESS,
+  );
+  revalidateProject(workspaceId, projectId);
+}
+
+// Feedback del manager sobre los avances (solo owner/admin).
+export async function addTaskReviewFeedbackAction(formData: FormData) {
+  const taskId = String(formData.get("taskId") ?? "");
+  const workspaceId = String(formData.get("workspaceId") ?? "");
+  const projectId = String(formData.get("projectId") ?? "");
+  const body = String(formData.get("body") ?? "");
+  const attachmentUrl = await extractAttachment(formData);
+
+  if (!body.trim() && !attachmentUrl) return;
+  const user = await getCurrentUser();
+  await taskService.addTaskComment(
+    taskId,
+    user.id,
+    body,
+    attachmentUrl,
+    IssueCommentKind.REVIEW_FEEDBACK,
+  );
+  revalidateProject(workspaceId, projectId);
+}
+
+export async function addTaskAttachmentAction(formData: FormData) {
+  const taskId = String(formData.get("taskId") ?? "");
+  const workspaceId = String(formData.get("workspaceId") ?? "");
+  const projectId = String(formData.get("projectId") ?? "");
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return;
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    throw new Error("El archivo no puede superar 8 MB.");
+  }
+  const url = await uploadFile(file);
+  const user = await getCurrentUser();
+  await taskService.addTaskAttachment(taskId, user.id, {
+    url,
+    name: file.name,
+    mimeType: file.type || "application/octet-stream",
+    size: file.size,
+  });
+  revalidateProject(workspaceId, projectId);
+}
+
+export async function removeTaskAttachmentAction(input: {
+  attachmentId: string;
+  workspaceId: string;
+  projectId: string;
+}) {
+  const user = await getCurrentUser();
+  await taskService.removeTaskAttachment(input.attachmentId, user.id);
+  revalidateProject(input.workspaceId, input.projectId);
+}
+
+export async function deleteTaskAction(input: {
+  taskId: string;
+  workspaceId: string;
+  projectId: string;
+}) {
+  const user = await getCurrentUser();
+  await taskService.deleteTask(input.taskId, user.id);
+  revalidateProject(input.workspaceId, input.projectId);
 }

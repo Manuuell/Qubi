@@ -214,8 +214,11 @@ async function main() {
         title: t.title,
         status: t.status,
         priority: t.priority,
-        assigneeId: t.assigneeId,
+        assignees: t.assigneeId
+          ? { create: [{ userId: t.assigneeId }] }
+          : undefined,
         authorId: admin.id,
+        statusEvents: { create: { toStatus: t.status, actorId: admin.id } },
         dueDate: t.dueDateOffset != null ? daysFromNow(t.dueDateOffset) : null,
         startDate:
           t.startDateOffset != null ? daysFromNow(t.startDateOffset) : null,

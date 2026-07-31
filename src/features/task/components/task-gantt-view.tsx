@@ -35,11 +35,11 @@ export function TaskGanttView({
   const [priority, setPriority] = useState("all");
 
   const filtered = tasks.filter((t) => {
-    if (assignee === "none" && t.assignee) return false;
+    if (assignee === "none" && t.assignees.length > 0) return false;
     if (
       assignee !== "all" &&
       assignee !== "none" &&
-      t.assignee?.id !== assignee
+      !t.assignees.some((a) => a.id === assignee)
     )
       return false;
     if (status !== "all" && t.status !== status) return false;

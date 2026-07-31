@@ -1,9 +1,31 @@
 import { prisma } from "@/lib/db";
-import { IssueStatus, Priority, ProjectStatus } from "@/generated/prisma/enums";
-import { notifyTaskAssigned } from "@/server/services/notification";
-import { assertWorkspaceMember } from "@/server/lib/permissions";
+import {
+  IssueStatus,
+  IssueType,
+  IssueCommentKind,
+  Priority,
+  ProjectStatus,
+} from "@/generated/prisma/enums";
+import {
+  notifyTaskAssigned,
+  notifyReviewFeedback,
+  notifyTaskReopened,
+} from "@/server/services/notification";
+import {
+  assertWorkspaceMember,
+  assertWorkspaceAdmin,
+} from "@/server/lib/permissions";
 
 // Las "tareas" son filas del modelo Issue ligadas a un proyecto (projectId).
+// Una tarea admite hasta 3 personas asignadas (tabla puente IssueAssignee).
+export const MAX_ASSIGNEES = 3;
+
+const personSelect = {
+  id: true,
+  name: true,
+  email: true,
+  image: true,
+} as const;
 
 async function assertTaskAccess(taskId: string, userId: string) {
   const task = await prisma.issue.findUnique({
@@ -12,6 +34,7 @@ async function assertTaskAccess(taskId: string, userId: string) {
   });
   if (!task) throw new Error("Tarea no encontrada");
   await assertWorkspaceMember(task.workspaceId, userId);
+  return task;
 }
 
 export type TaskCard = {
@@ -19,11 +42,18 @@ export type TaskCard = {
   number: number;
   title: string;
   body: string;
+  type: IssueType;
   status: IssueStatus;
   priority: Priority;
   startDate: Date | null;
   dueDate: Date | null;
-  assignee: { id: string; name: string | null; email: string } | null;
+  assignees: {
+    id: string;
+    name: string | null;
+    email: string;
+    image: string | null;
+  }[];
+  labels: { id: string; name: string; color: string }[];
 };
 
 // Tareas de un proyecto (para tablero/lista/calendario). Verifica pertenencia.
@@ -37,21 +67,30 @@ export async function listProjectTasks(
   });
   if (!project) throw new Error("Proyecto no encontrado");
 
-  return prisma.issue.findMany({
+  const rows = await prisma.issue.findMany({
     where: { projectId },
     select: {
       id: true,
       number: true,
       title: true,
       body: true,
+      type: true,
       status: true,
       priority: true,
       startDate: true,
       dueDate: true,
-      assignee: { select: { id: true, name: true, email: true } },
+      assignees: { select: { user: { select: personSelect } } },
+      labels: {
+        select: { label: { select: { id: true, name: true, color: true } } },
+      },
     },
     orderBy: { createdAt: "asc" },
   });
+  return rows.map((r) => ({
+    ...r,
+    assignees: r.assignees.map((a) => a.user),
+    labels: r.labels.map((l) => l.label),
+  }));
 }
 
 export type AgendaTask = {
@@ -74,7 +113,7 @@ export async function listMyTasks(
   const rows = await prisma.issue.findMany({
     where: {
       workspaceId,
-      assigneeId: userId,
+      assignees: { some: { userId } },
       status: { not: IssueStatus.DONE },
       project: { status: ProjectStatus.ACTIVE },
     },
@@ -99,58 +138,185 @@ export async function createTask(input: {
   projectId: string;
   userId: string;
   title: string;
-  assigneeId?: string | null;
+  body?: string;
+  type?: IssueType;
+  priority?: Priority;
+  assigneeIds?: string[];
+  labelIds?: string[];
+  dueDate?: Date | null;
+  startDate?: Date | null;
+  linkedPageId?: string | null;
 }) {
   await assertWorkspaceMember(input.workspaceId, input.userId);
+  const assigneeIds = [...new Set(input.assigneeIds ?? [])].slice(
+    0,
+    MAX_ASSIGNEES,
+  );
+  const labelIds = [...new Set(input.labelIds ?? [])];
+
   // Número secuencial por espacio (compartido con el resto de tareas/issues).
   const last = await prisma.issue.findFirst({
     where: { workspaceId: input.workspaceId },
     orderBy: { number: "desc" },
     select: { number: true },
   });
+
   const issue = await prisma.issue.create({
     data: {
       workspaceId: input.workspaceId,
       projectId: input.projectId,
       number: (last?.number ?? 0) + 1,
       title: input.title.trim() || "Sin título",
+      body: input.body ?? "",
+      type: input.type ?? IssueType.TASK,
+      priority: input.priority ?? Priority.MEDIUM,
+      dueDate: input.dueDate ?? null,
+      startDate: input.startDate ?? null,
+      linkedPageId: input.linkedPageId ?? null,
       authorId: input.userId,
-      assigneeId: input.assigneeId ?? null,
+      assignees: { create: assigneeIds.map((userId) => ({ userId })) },
+      labels: { create: labelIds.map((labelId) => ({ labelId })) },
+      statusEvents: {
+        create: { toStatus: IssueStatus.TODO, actorId: input.userId },
+      },
     },
   });
-  // Avisa a la persona si se le asignó la tarea al crearla.
-  await notifyTaskAssigned(issue, input.userId);
+
+  // Avisa a las personas si se les asignó la tarea al crearla.
+  await notifyTaskAssigned(issue, assigneeIds, input.userId);
   return issue;
 }
 
+// Cambia el estado de una tarea. Reglas de negocio:
+// - No se puede pasar a HECHA sin al menos un avance verificable (un
+//   comentario de tipo PROGRESS documentado mientras estaba en curso).
+// - Reabrir una tarea que ya estaba HECHA (volverla a pendiente o en curso)
+//   solo lo puede hacer un manager (owner/admin), y queda notificado.
 export async function setTaskStatus(
   taskId: string,
   userId: string,
   status: IssueStatus,
+  note?: string,
 ) {
-  await assertTaskAccess(taskId, userId);
-  return prisma.issue.update({
+  const issue = await prisma.issue.findUnique({
     where: { id: taskId },
-    data: {
-      status,
-      completedAt: status === IssueStatus.DONE ? new Date() : null,
-    },
+    include: { assignees: { select: { userId: true } } },
   });
+  if (!issue) throw new Error("Tarea no encontrada");
+  await assertWorkspaceMember(issue.workspaceId, userId);
+
+  const isReopen =
+    issue.status === IssueStatus.DONE && status !== IssueStatus.DONE;
+  if (isReopen) {
+    await assertWorkspaceAdmin(issue.workspaceId, userId);
+  }
+
+  if (status === IssueStatus.DONE && issue.status !== IssueStatus.DONE) {
+    const progressCount = await prisma.issueComment.count({
+      where: { issueId: taskId, kind: IssueCommentKind.PROGRESS },
+    });
+    if (progressCount === 0) {
+      throw new Error(
+        "Registra al menos un avance verificable antes de marcar la tarea como Hecha.",
+      );
+    }
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const u = await tx.issue.update({
+      where: { id: taskId },
+      data: {
+        status,
+        completedAt: status === IssueStatus.DONE ? new Date() : null,
+      },
+    });
+    await tx.issueStatusEvent.create({
+      data: {
+        issueId: taskId,
+        fromStatus: issue.status,
+        toStatus: status,
+        actorId: userId,
+        note: note?.trim() ?? "",
+      },
+    });
+    return u;
+  });
+
+  if (isReopen) {
+    await notifyTaskReopened(
+      updated,
+      issue.assignees.map((a) => a.userId),
+      userId,
+    );
+  }
+  return updated;
 }
 
-export async function setTaskAssignee(
+// Atajo: "Empezar a hacer" (TODO -> IN_PROGRESS).
+export async function startTask(taskId: string, userId: string) {
+  return setTaskStatus(taskId, userId, IssueStatus.IN_PROGRESS);
+}
+
+export async function setTaskAssignees(
   taskId: string,
   userId: string,
-  assigneeId: string | null,
+  assigneeIds: string[],
+) {
+  const capped = [...new Set(assigneeIds)].slice(0, MAX_ASSIGNEES);
+  const task = await assertTaskAccess(taskId, userId);
+  const current = await prisma.issueAssignee.findMany({
+    where: { issueId: taskId },
+    select: { userId: true },
+  });
+  const currentIds = new Set(current.map((c) => c.userId));
+  const nextIds = new Set(capped);
+  const toRemove = [...currentIds].filter((id) => !nextIds.has(id));
+  const toAdd = capped.filter((id) => !currentIds.has(id));
+
+  await prisma.$transaction([
+    prisma.issueAssignee.deleteMany({
+      where: { issueId: taskId, userId: { in: toRemove } },
+    }),
+    prisma.issueAssignee.createMany({
+      data: toAdd.map((assigneeUserId) => ({
+        issueId: taskId,
+        userId: assigneeUserId,
+      })),
+      skipDuplicates: true,
+    }),
+  ]);
+
+  const issue = await prisma.issue.findUniqueOrThrow({
+    where: { id: taskId },
+    select: { id: true, number: true, title: true, workspaceId: true },
+  });
+  await notifyTaskAssigned(issue, toAdd, userId);
+  return { ...issue, workspaceId: task.workspaceId };
+}
+
+export async function setTaskLabels(
+  taskId: string,
+  userId: string,
+  labelIds: string[],
 ) {
   await assertTaskAccess(taskId, userId);
-  const issue = await prisma.issue.update({
-    where: { id: taskId },
-    data: { assigneeId },
-  });
-  // Avisa al nuevo responsable (notifyTaskAssigned ignora autoasignaciones).
-  await notifyTaskAssigned(issue, userId);
-  return issue;
+  const unique = [...new Set(labelIds)];
+  await prisma.$transaction([
+    prisma.issueLabel.deleteMany({ where: { issueId: taskId } }),
+    prisma.issueLabel.createMany({
+      data: unique.map((labelId) => ({ issueId: taskId, labelId })),
+      skipDuplicates: true,
+    }),
+  ]);
+}
+
+export async function setTaskType(
+  taskId: string,
+  userId: string,
+  type: IssueType,
+) {
+  await assertTaskAccess(taskId, userId);
+  return prisma.issue.update({ where: { id: taskId }, data: { type } });
 }
 
 export async function setTaskPriority(
@@ -180,29 +346,59 @@ export async function setTaskStartDate(
   return prisma.issue.update({ where: { id: taskId }, data: { startDate } });
 }
 
-// Detalle completo de una tarea por número (#n), con proyecto, personas y comentarios.
+export async function linkTaskPage(
+  taskId: string,
+  userId: string,
+  linkedPageId: string | null,
+) {
+  await assertTaskAccess(taskId, userId);
+  return prisma.issue.update({ where: { id: taskId }, data: { linkedPageId } });
+}
+
+// Detalle completo de una tarea por número (#n): proyecto, personas, etiquetas,
+// comentarios, adjuntos, historial de estados y horas invertidas. Todo queda
+// visible aunque la tarea ya esté Hecha.
 export async function getTaskDetail(
   workspaceId: string,
   number: number,
   userId: string,
 ) {
   await assertWorkspaceMember(workspaceId, userId);
-  return prisma.issue.findUnique({
+  const issue = await prisma.issue.findUnique({
     where: { workspaceId_number: { workspaceId, number } },
     include: {
       project: { select: { id: true, name: true, color: true } },
-      author: { select: { id: true, name: true, email: true } },
-      assignee: { select: { id: true, name: true, email: true } },
+      author: { select: personSelect },
+      assignees: { select: { user: { select: personSelect } } },
+      labels: {
+        select: { label: { select: { id: true, name: true, color: true } } },
+      },
+      linkedPage: { select: { id: true, title: true, icon: true } },
+      attachments: {
+        orderBy: { createdAt: "desc" },
+        include: { uploadedBy: { select: personSelect } },
+      },
+      statusEvents: {
+        orderBy: { createdAt: "asc" },
+        include: { actor: { select: personSelect } },
+      },
       comments: {
         orderBy: { createdAt: "asc" },
-        include: {
-          author: {
-            select: { id: true, name: true, email: true, image: true },
-          },
-        },
+        include: { author: { select: personSelect } },
       },
+      timeEntries: { select: { minutes: true, userId: true, date: true } },
     },
   });
+  if (!issue) return null;
+
+  const totalMinutes = issue.timeEntries.reduce((sum, t) => sum + t.minutes, 0);
+
+  return {
+    ...issue,
+    assignees: issue.assignees.map((a) => a.user),
+    labels: issue.labels.map((l) => l.label),
+    totalMinutes,
+  };
 }
 
 export async function setTaskTitle(
@@ -231,14 +427,79 @@ export async function addTaskComment(
   userId: string,
   body: string,
   attachmentUrl?: string | null,
+  kind: IssueCommentKind = IssueCommentKind.COMMENT,
 ) {
-  await assertTaskAccess(taskId, userId);
-  return prisma.issueComment.create({
+  const task = await assertTaskAccess(taskId, userId);
+  if (kind === IssueCommentKind.REVIEW_FEEDBACK) {
+    await assertWorkspaceAdmin(task.workspaceId, userId);
+  }
+
+  const comment = await prisma.issueComment.create({
     data: {
       issueId: taskId,
       authorId: userId,
+      kind,
       body: body.trim(),
       attachmentUrl: attachmentUrl ?? null,
     },
   });
+
+  if (kind === IssueCommentKind.REVIEW_FEEDBACK) {
+    const issue = await prisma.issue.findUniqueOrThrow({
+      where: { id: taskId },
+      select: {
+        id: true,
+        number: true,
+        title: true,
+        workspaceId: true,
+        assignees: { select: { userId: true } },
+      },
+    });
+    await notifyReviewFeedback(
+      issue,
+      issue.assignees.map((a) => a.userId),
+      userId,
+    );
+  }
+
+  return comment;
+}
+
+export async function addTaskAttachment(
+  taskId: string,
+  userId: string,
+  file: { url: string; name: string; mimeType: string; size: number },
+) {
+  await assertTaskAccess(taskId, userId);
+  return prisma.issueAttachment.create({
+    data: {
+      issueId: taskId,
+      uploadedById: userId,
+      url: file.url,
+      name: file.name,
+      mimeType: file.mimeType,
+      size: file.size,
+    },
+  });
+}
+
+export async function removeTaskAttachment(
+  attachmentId: string,
+  userId: string,
+) {
+  const attachment = await prisma.issueAttachment.findUnique({
+    where: { id: attachmentId },
+    select: { issueId: true },
+  });
+  if (!attachment) return;
+  await assertTaskAccess(attachment.issueId, userId);
+  await prisma.issueAttachment.delete({ where: { id: attachmentId } });
+}
+
+// Borrar la tarea (incluso ya finalizada) es una decisión explícita aparte;
+// nunca ocurre automáticamente. Solo un manager puede hacerlo.
+export async function deleteTask(taskId: string, userId: string) {
+  const task = await assertTaskAccess(taskId, userId);
+  await assertWorkspaceAdmin(task.workspaceId, userId);
+  await prisma.issue.delete({ where: { id: taskId } });
 }

@@ -48,6 +48,24 @@ enum InviteStatus {
 enum NotificationType {
   TASK_ASSIGNED // te asignaron como responsable de una tarea
   TASK_DUE_SOON // una tarea tuya está por vencer
+  TASK_REVIEW_FEEDBACK // el manager comentó/dio feedback sobre tus avances
+  TASK_REOPENED // el manager devolvió tu tarea a pendiente o en curso
+}
+
+// Tipo de tarea (para clasificar y filtrar el trabajo).
+enum IssueType {
+  TASK
+  FEATURE
+  BUG
+  IMPROVEMENT
+  DOCS
+}
+
+// Tipo de comentario dentro de una tarea.
+enum IssueCommentKind {
+  COMMENT // conversación normal
+  PROGRESS // avance documentado mientras la tarea está en curso
+  REVIEW_FEEDBACK // feedback del manager sobre los avances
 }
 
 // ── Usuarios ─────────────────────────────────────────────────────────────
@@ -62,21 +80,23 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  memberships     WorkspaceMember[]
-  ownedWorkspaces Workspace[]       @relation("WorkspaceOwner")
-  createdPages    Page[]            @relation("PageCreatedBy")
-  accounts        Account[]
-  sessions        Session[]
-  favorites       Favorite[]
-  authoredIssues  Issue[]           @relation("IssueAuthor")
-  assignedIssues  Issue[]           @relation("IssueAssignee")
-  issueComments   IssueComment[]    @relation("IssueCommentAuthor")
-  timeEntries     TimeEntry[]
-  notifications   Notification[]    @relation("NotificationRecipient")
-  triggeredNotifs Notification[]    @relation("NotificationActor")
-  sentInvites     WorkspaceInvite[] @relation("InviteCreatedBy")
-  runningTimer    RunningTimer?
-  workSessions    WorkSession[]
+  memberships       WorkspaceMember[]
+  ownedWorkspaces   Workspace[]        @relation("WorkspaceOwner")
+  createdPages      Page[]             @relation("PageCreatedBy")
+  accounts          Account[]
+  sessions          Session[]
+  favorites         Favorite[]
+  authoredIssues    Issue[]            @relation("IssueAuthor")
+  issueAssignments  IssueAssignee[]
+  issueComments     IssueComment[]     @relation("IssueCommentAuthor")
+  issueAttachments  IssueAttachment[]  @relation("IssueAttachmentUploader")
+  issueStatusEvents IssueStatusEvent[] @relation("IssueStatusEventActor")
+  timeEntries       TimeEntry[]
+  notifications     Notification[]     @relation("NotificationRecipient")
+  triggeredNotifs   Notification[]     @relation("NotificationActor")
+  sentInvites       WorkspaceInvite[]  @relation("InviteCreatedBy")
+  runningTimer      RunningTimer?
+  workSessions      WorkSession[]
 }
 
 // ── Auth.js (NextAuth) ───────────────────────────────────────────────────
@@ -136,6 +156,7 @@ model Workspace {
   pages         Page[]
   issues        Issue[]
   projects      Project[]
+  labels        Label[]
   invites       WorkspaceInvite[]
   notifications Notification[]
   workSessions  WorkSession[]
@@ -154,13 +175,29 @@ model Project {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   tasks         Issue[] // las tareas del proyecto (modelo Issue)
   timeEntries   TimeEntry[]
   runningTimers RunningTimer[]
   workSessions  WorkSession[]
+  databases     ProjectDatabase[] // bases de datos de archivos vinculadas (pueden compartirse entre proyectos)
 
   @@index([workspaceId])
+}
+
+// Tabla puente proyecto <-> base de datos de archivos (Page con type=DATABASE).
+// Una misma base de datos puede vincularse a 2 o más proyectos.
+model ProjectDatabase {
+  id        String   @id @default(cuid())
+  projectId String
+  pageId    String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  page    Page    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, pageId])
+  @@index([pageId])
 }
 
 // Tabla puente usuario <-> workspace (con su rol).
@@ -252,6 +289,8 @@ model Page {
   databaseProperties DatabaseProperty[] @relation("DatabaseProperties")
   propertyValues     PropertyValue[]    @relation("RowValues")
   favoritedBy        Favorite[]
+  linkedByIssues     Issue[]            @relation("IssueLinkedPage")
+  projectDatabases   ProjectDatabase[] // proyectos que usan esta página como base de datos de archivos
 
   @@index([workspaceId])
   @@index([parentId])
@@ -282,33 +321,117 @@ enum IssueStatus {
 
 // Tarea / pendiente. Pertenece a un workspace y (opcionalmente) a un proyecto.
 model Issue {
-  id          String      @id @default(cuid())
-  workspaceId String
-  projectId   String? // proyecto al que pertenece (null = sin clasificar)
-  number      Int // secuencial por espacio (#1, #2, …)
-  title       String
-  body        String      @default("")
-  status      IssueStatus @default(TODO)
-  priority    Priority    @default(MEDIUM)
-  startDate   DateTime? // fecha de inicio planificada (alimenta el Gantt)
-  dueDate     DateTime? // fecha límite (alimenta la agenda y el calendario)
-  completedAt DateTime? // momento en que se marcó como HECHA
-  authorId    String?
-  assigneeId  String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id           String      @id @default(cuid())
+  workspaceId  String
+  projectId    String? // proyecto al que pertenece (null = sin clasificar)
+  number       Int // secuencial por espacio (#1, #2, …)
+  title        String
+  body         String      @default("")
+  type         IssueType   @default(TASK)
+  status       IssueStatus @default(TODO)
+  priority     Priority    @default(MEDIUM)
+  startDate    DateTime? // fecha de inicio planificada (alimenta el Gantt)
+  dueDate      DateTime? // fecha límite (alimenta la agenda y el calendario)
+  completedAt  DateTime? // momento en que se marcó como HECHA
+  authorId     String?
+  linkedPageId String? // ruta vinculada dentro de la base de datos de archivos del proyecto
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
-  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  project     Project?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  author      User?          @relation("IssueAuthor", fields: [authorId], references: [id], onDelete: SetNull)
-  assignee    User?          @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  comments    IssueComment[]
-  timeEntries TimeEntry[]
+  workspace     Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project       Project?           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author        User?              @relation("IssueAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  linkedPage    Page?              @relation("IssueLinkedPage", fields: [linkedPageId], references: [id], onDelete: SetNull)
+  assignees     IssueAssignee[]
+  labels        IssueLabel[]
+  comments      IssueComment[]
+  attachments   IssueAttachment[]
+  statusEvents  IssueStatusEvent[]
+  timeEntries   TimeEntry[]
+  workSessions  WorkSession[]
+  runningTimers RunningTimer[]
 
   @@unique([workspaceId, number])
   @@index([workspaceId])
   @@index([projectId])
-  @@index([assigneeId])
+  @@index([linkedPageId])
+}
+
+// Tabla puente tarea <-> asignado. Una tarea admite hasta 3 (validado en la app).
+model IssueAssignee {
+  id        String   @id @default(cuid())
+  issueId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([issueId, userId])
+  @@index([userId])
+}
+
+// Etiqueta reutilizable dentro de un workspace (nombre + color).
+model Label {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  color       String // hex para la UI
+  createdAt   DateTime @default(now())
+
+  workspace Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  issues    IssueLabel[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+// Tabla puente tarea <-> etiqueta.
+model IssueLabel {
+  id      String @id @default(cuid())
+  issueId String
+  labelId String
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@unique([issueId, labelId])
+  @@index([labelId])
+}
+
+// Archivo adjunto a la tarea (independiente de los comentarios): fotos,
+// documentos, capturas. Queda visible aunque la tarea ya esté Hecha.
+model IssueAttachment {
+  id           String   @id @default(cuid())
+  issueId      String
+  url          String
+  name         String
+  mimeType     String
+  size         Int // bytes
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  issue      Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  uploadedBy User? @relation("IssueAttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([issueId])
+}
+
+// Historial de cambios de estado de una tarea: quién movió qué a qué estado
+// y cuándo (incluye reaperturas del manager). Queda para siempre.
+model IssueStatusEvent {
+  id         String       @id @default(cuid())
+  issueId    String
+  fromStatus IssueStatus?
+  toStatus   IssueStatus
+  actorId    String?
+  note       String       @default("")
+  createdAt  DateTime     @default(now())
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  actor User? @relation("IssueStatusEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([issueId, createdAt])
 }
 
 // Registro de horas de trabajo de un usuario en un proyecto, por día.
@@ -340,6 +463,7 @@ model RunningTimer {
   id                 String    @id @default(cuid())
   userId             String    @unique // un solo temporizador activo por usuario
   projectId          String
+  issueId            String? // tarea específica que se está trabajando (opcional)
   sessionId          String    @unique
   startedAt          DateTime  @default(now())
   accumulatedMinutes Int       @default(0)
@@ -347,9 +471,11 @@ model RunningTimer {
 
   user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issue   Issue?      @relation(fields: [issueId], references: [id], onDelete: SetNull)
   session WorkSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
+  @@index([issueId])
 }
 
 // Historial de sesiones de trabajo (cada vez que se inicia el cronómetro).
@@ -359,6 +485,7 @@ model WorkSession {
   userId      String
   projectId   String
   workspaceId String
+  issueId     String? // tarea específica en la que se trabajó (opcional)
   startedAt   DateTime  @default(now())
   endedAt     DateTime?
   minutes     Int       @default(0)
@@ -366,12 +493,14 @@ model WorkSession {
   user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   workspace    Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  issue        Issue?            @relation(fields: [issueId], references: [id], onDelete: SetNull)
   notes        WorkSessionNote[]
   runningTimer RunningTimer?
 
   @@index([userId, startedAt])
   @@index([workspaceId, startedAt])
   @@index([projectId])
+  @@index([issueId])
 }
 
 // Avance registrado durante una sesión de trabajo (nota + captura opcional).
@@ -388,12 +517,13 @@ model WorkSessionNote {
 }
 
 model IssueComment {
-  id            String   @id @default(cuid())
+  id            String           @id @default(cuid())
   issueId       String
   authorId      String?
+  kind          IssueCommentKind @default(COMMENT)
   body          String
   attachmentUrl String?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime         @default(now())
 
   issue  Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
   author User? @relation("IssueCommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)

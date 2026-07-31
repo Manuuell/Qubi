@@ -36,6 +36,7 @@ export default async function TaskDetailPage({
     id: m.user.id,
     name: m.user.name,
     email: m.user.email,
+    image: m.user.image,
   }));
   // Mapa userId → rol para mostrar badges en comentarios y en el responsable.
   const roleByUserId = Object.fromEntries(
@@ -99,17 +100,20 @@ export default async function TaskDetailPage({
             priority={task.priority}
           />
         </Field>
-        <Field label="Responsable">
+        <Field label="Responsables">
           <div className="flex flex-wrap items-center gap-1.5">
             <TaskAssigneeSelect
               taskId={task.id}
               workspaceId={workspaceId}
               projectId={projectId}
-              assigneeId={task.assignee?.id ?? null}
+              assigneeIds={task.assignees.map((a) => a.id)}
               members={memberOptions}
             />
-            {task.assignee && roleByUserId[task.assignee.id] && (
-              <RoleBadge role={roleByUserId[task.assignee.id]} />
+            {task.assignees.map(
+              (a) =>
+                roleByUserId[a.id] && (
+                  <RoleBadge key={a.id} role={roleByUserId[a.id]} />
+                ),
             )}
           </div>
         </Field>

@@ -68,7 +68,7 @@ export function TaskList({
                   taskId={task.id}
                   workspaceId={workspaceId}
                   projectId={projectId}
-                  assigneeId={task.assignee?.id ?? null}
+                  assigneeIds={task.assignees.map((a) => a.id)}
                   members={members}
                 />
               </td>

@@ -5,7 +5,7 @@ import { Camera, PartyPopper } from "lucide-react";
 import { IssueStatus } from "@/generated/prisma/enums";
 import { STATUS_DOT, STATUS_LABEL, STATUS_ORDER } from "@/features/task/labels";
 import {
-  addTaskCommentAction,
+  addTaskProgressAction,
   setTaskStatusAction,
 } from "@/server/actions/task";
 import {
@@ -38,11 +38,23 @@ export function TaskStatusSelect({
 }) {
   const [pending, startTransition] = useTransition();
   const [askingEvidence, setAskingEvidence] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function applyStatus(next: IssueStatus) {
-    startTransition(() =>
-      setTaskStatusAction({ taskId, workspaceId, projectId, status: next }),
-    );
+    setError(null);
+    startTransition(async () => {
+      try {
+        await setTaskStatusAction({
+          taskId,
+          workspaceId,
+          projectId,
+          status: next,
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "No se pudo actualizar.");
+        if (next === IssueStatus.DONE) setAskingEvidence(true);
+      }
+    });
   }
 
   function onValueChange(value: string | null) {
@@ -84,14 +96,20 @@ export function TaskStatusSelect({
             </div>
             <DialogTitle>¡Tarea completada!</DialogTitle>
             <DialogDescription>
-              Cuenta qué se hizo y adjunta una captura si quieres dejar
-              evidencia (puedes omitirlo).
+              Cuenta qué se hizo y adjunta una captura: es el avance verificable
+              que se necesita para poder marcarla como Hecha.
             </DialogDescription>
           </DialogHeader>
+          {error && (
+            <p className="bg-destructive/10 text-destructive rounded-xl px-3 py-2 text-xs">
+              {error}
+            </p>
+          )}
           <EvidenceForm
             taskId={taskId}
             workspaceId={workspaceId}
             projectId={projectId}
+            onCancel={() => setAskingEvidence(false)}
             onDone={() => {
               setAskingEvidence(false);
               applyStatus(IssueStatus.DONE);
@@ -107,28 +125,30 @@ function EvidenceForm({
   taskId,
   workspaceId,
   projectId,
+  onCancel,
   onDone,
 }: {
   taskId: string;
   workspaceId: string;
   projectId: string;
+  onCancel: () => void;
   onDone: () => void;
 }) {
   const [body, setBody] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const canSave = body.trim().length > 0 || file !== null;
 
   async function save() {
+    if (!canSave) return;
     setSaving(true);
-    if (body.trim() || file) {
-      const fd = new FormData();
-      fd.set("taskId", taskId);
-      fd.set("workspaceId", workspaceId);
-      fd.set("projectId", projectId);
-      fd.set("body", body);
-      if (file) fd.set("file", file);
-      await addTaskCommentAction(fd);
-    }
+    const fd = new FormData();
+    fd.set("taskId", taskId);
+    fd.set("workspaceId", workspaceId);
+    fd.set("projectId", projectId);
+    fd.set("body", body);
+    if (file) fd.set("file", file);
+    await addTaskProgressAction(fd);
     onDone();
   }
 
@@ -153,15 +173,15 @@ function EvidenceForm({
       </label>
       <DialogFooter>
         <button
-          onClick={onDone}
+          onClick={onCancel}
           disabled={saving}
           className="text-muted-foreground hover:bg-accent transition-ios rounded-full px-4 py-2 text-sm font-medium disabled:opacity-50"
         >
-          Omitir
+          Cancelar
         </button>
         <button
           onClick={save}
-          disabled={saving}
+          disabled={saving || !canSave}
           className="bg-primary text-primary-foreground hover:bg-primary/85 transition-ios rounded-full px-5 py-2 text-sm font-medium shadow-sm active:scale-95 disabled:opacity-50"
         >
           Guardar y completar

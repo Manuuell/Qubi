@@ -89,9 +89,11 @@ export function ProjectProduction({
                   )}
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  {t.assignee?.name?.trim() ||
-                    t.assignee?.email ||
-                    "Sin asignar"}
+                  {t.assignees.length > 0
+                    ? t.assignees
+                        .map((a) => a.name?.trim() || a.email)
+                        .join(", ")
+                    : "Sin asignar"}
                   {t.completedAt &&
                     ` · ${dateFmt.format(new Date(t.completedAt))}`}
                 </p>

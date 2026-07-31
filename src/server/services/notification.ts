@@ -2,25 +2,27 @@ import { prisma } from "@/lib/db";
 import { IssueStatus, NotificationType } from "@/generated/prisma/enums";
 
 // Tarea recién actualizada de la que conocemos los campos necesarios para armar
-// la notificación de asignación (evita una segunda consulta).
+// notificaciones (evita una segunda consulta).
 type IssueForNotice = {
   id: string;
   number: number;
   title: string;
   workspaceId: string;
-  assigneeId: string | null;
 };
 
-// Notifica a la persona asignada como responsable de una tarea. No notifica si
-// se asignó a sí misma (no tiene sentido avisarse a uno mismo).
+// Notifica a cada nuevo responsable asignado a una tarea. No notifica si se
+// asignó a sí mismo (no tiene sentido avisarse a uno mismo). `assigneeIds`
+// son solo los IDs que se acaban de agregar (no toda la lista de asignados).
 export async function notifyTaskAssigned(
   issue: IssueForNotice,
+  assigneeIds: string[],
   actorId: string,
 ) {
-  if (!issue.assigneeId || issue.assigneeId === actorId) return;
-  await prisma.notification.create({
-    data: {
-      userId: issue.assigneeId,
+  const recipients = assigneeIds.filter((id) => id !== actorId);
+  if (recipients.length === 0) return;
+  await prisma.notification.createMany({
+    data: recipients.map((userId) => ({
+      userId,
       type: NotificationType.TASK_ASSIGNED,
       title: `Te asignaron la tarea #${issue.number}`,
       body: issue.title,
@@ -28,7 +30,52 @@ export async function notifyTaskAssigned(
       workspaceId: issue.workspaceId,
       issueId: issue.id,
       actorId,
-    },
+    })),
+  });
+}
+
+// Notifica a los asignados de una tarea que el manager comentó/dio feedback
+// sobre sus avances.
+export async function notifyReviewFeedback(
+  issue: IssueForNotice,
+  assigneeIds: string[],
+  actorId: string,
+) {
+  const recipients = assigneeIds.filter((id) => id !== actorId);
+  if (recipients.length === 0) return;
+  await prisma.notification.createMany({
+    data: recipients.map((userId) => ({
+      userId,
+      type: NotificationType.TASK_REVIEW_FEEDBACK,
+      title: `Nuevo feedback en la tarea #${issue.number}`,
+      body: issue.title,
+      href: `/w/${issue.workspaceId}/tasks/${issue.number}`,
+      workspaceId: issue.workspaceId,
+      issueId: issue.id,
+      actorId,
+    })),
+  });
+}
+
+// Notifica a los asignados que el manager reabrió una tarea que ya estaba Hecha.
+export async function notifyTaskReopened(
+  issue: IssueForNotice,
+  assigneeIds: string[],
+  actorId: string,
+) {
+  const recipients = assigneeIds.filter((id) => id !== actorId);
+  if (recipients.length === 0) return;
+  await prisma.notification.createMany({
+    data: recipients.map((userId) => ({
+      userId,
+      type: NotificationType.TASK_REOPENED,
+      title: `Reabrieron la tarea #${issue.number}`,
+      body: issue.title,
+      href: `/w/${issue.workspaceId}/tasks/${issue.number}`,
+      workspaceId: issue.workspaceId,
+      issueId: issue.id,
+      actorId,
+    })),
   });
 }
 
@@ -39,7 +86,7 @@ async function generateDueSoonNotifications(userId: string) {
   const soon = new Date(Date.now() + 24 * 60 * 60 * 1000); // próximas 24 h
   const tasks = await prisma.issue.findMany({
     where: {
-      assigneeId: userId,
+      assignees: { some: { userId } },
       status: { not: IssueStatus.DONE },
       dueDate: { not: null, lte: soon },
     },
