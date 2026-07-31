@@ -6,6 +6,51 @@ import { auth, signIn } from "@/auth";
 import { prisma } from "@/lib/db";
 import { verifySwitchToken } from "@/lib/switch-token";
 import { addToRing, readRing, removeFromRing } from "@/server/account-ring";
+import { getCurrentUser } from "@/lib/auth";
+import { uploadFile } from "@/lib/storage";
+
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+
+type NameFormState = { error?: string; info?: string };
+
+// Actualiza el nombre visible del usuario actual.
+export async function updateProfileNameAction(
+  _prevState: NameFormState,
+  formData: FormData,
+): Promise<NameFormState> {
+  const user = await getCurrentUser();
+  const name = String(formData.get("name") ?? "").trim();
+
+  if (!name) {
+    return { error: "El nombre no puede estar vacío." };
+  }
+  if (name.length > 80) {
+    return { error: "El nombre es demasiado largo." };
+  }
+
+  await prisma.user.update({ where: { id: user.id }, data: { name } });
+  revalidatePath("/account", "layout");
+  revalidatePath("/", "layout");
+  return { info: "Nombre actualizado." };
+}
+
+// Sube y guarda la foto de perfil del usuario actual.
+export async function updateProfileImageAction(formData: FormData) {
+  const user = await getCurrentUser();
+  const file = formData.get("file");
+
+  if (!(file instanceof File) || !file.type.startsWith("image/")) {
+    throw new Error("Selecciona una imagen válida.");
+  }
+  if (file.size > MAX_AVATAR_BYTES) {
+    throw new Error("La imagen no puede superar 5 MB.");
+  }
+
+  const url = await uploadFile(file);
+  await prisma.user.update({ where: { id: user.id }, data: { image: url } });
+  revalidatePath("/account", "layout");
+  return { url };
+}
 
 // Guarda la cuenta activa en el anillo para poder volver a ella sin contraseña.
 async function ensureCurrentInRing() {
