@@ -5,6 +5,7 @@ import { TaskStatusSelect } from "./task-status-select";
 import { TaskAssigneeSelect, type MemberOption } from "./task-assignee-select";
 import { TaskPrioritySelect } from "./task-priority-select";
 import { TaskDueDateInput } from "./task-due-date-input";
+import { Card } from "@/components/ui/card";
 
 export function TaskList({
   tasks,
@@ -19,28 +20,30 @@ export function TaskList({
 }) {
   if (tasks.length === 0) {
     return (
-      <p className="text-muted-foreground py-10 text-center text-sm">
-        Aún no hay tareas. Añade una arriba.
-      </p>
+      <Card variant="glass" className="py-10 text-center">
+        <p className="text-muted-foreground text-sm">
+          Aún no hay tareas. Añade una arriba.
+        </p>
+      </Card>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border">
+    <Card variant="glass" className="no-scrollbar overflow-x-auto p-0">
       <table className="w-full text-sm">
-        <thead className="text-muted-foreground border-b text-left text-xs">
+        <thead className="text-muted-foreground text-left text-xs">
           <tr>
-            <th className="px-3 py-2 font-medium">Estado</th>
-            <th className="px-3 py-2 font-medium">Tarea</th>
-            <th className="px-3 py-2 font-medium">Responsable</th>
-            <th className="px-3 py-2 font-medium">Prioridad</th>
-            <th className="px-3 py-2 font-medium">Fecha</th>
+            <th className="px-4 py-3 font-medium">Estado</th>
+            <th className="px-4 py-3 font-medium">Tarea</th>
+            <th className="px-4 py-3 font-medium">Responsable</th>
+            <th className="px-4 py-3 font-medium">Prioridad</th>
+            <th className="px-4 py-3 font-medium">Fecha</th>
           </tr>
         </thead>
-        <tbody className="divide-y">
+        <tbody className="divide-border/60 divide-y">
           {tasks.map((task) => (
-            <tr key={task.id} className="hover:bg-accent/40">
-              <td className="px-3 py-2">
+            <tr key={task.id} className="hover:bg-accent/40 transition-ios">
+              <td className="px-4 py-2">
                 <TaskStatusSelect
                   taskId={task.id}
                   workspaceId={workspaceId}
@@ -48,7 +51,7 @@ export function TaskList({
                   status={task.status}
                 />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-4 py-2">
                 <Link
                   href={`/w/${workspaceId}/tasks/${task.number}`}
                   className={cn(
@@ -60,7 +63,7 @@ export function TaskList({
                   {task.title}
                 </Link>
               </td>
-              <td className="px-3 py-2">
+              <td className="px-4 py-2">
                 <TaskAssigneeSelect
                   taskId={task.id}
                   workspaceId={workspaceId}
@@ -69,7 +72,7 @@ export function TaskList({
                   members={members}
                 />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-4 py-2">
                 <TaskPrioritySelect
                   taskId={task.id}
                   workspaceId={workspaceId}
@@ -77,7 +80,7 @@ export function TaskList({
                   priority={task.priority}
                 />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-4 py-2">
                 <TaskDueDateInput
                   taskId={task.id}
                   workspaceId={workspaceId}
@@ -89,6 +92,6 @@ export function TaskList({
           ))}
         </tbody>
       </table>
-    </div>
+    </Card>
   );
 }

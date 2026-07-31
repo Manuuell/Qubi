@@ -61,10 +61,12 @@ export function TaskGantt({
   if (scheduled.length === 0) {
     return (
       <div>
-        <p className="text-muted-foreground rounded-md border border-dashed px-4 py-10 text-center text-sm">
-          Ninguna tarea tiene fechas todavía. Asigna una fecha de inicio o
-          límite para verla en el cronograma.
-        </p>
+        <div className="glass rounded-3xl px-4 py-10 text-center">
+          <p className="text-muted-foreground text-sm">
+            Ninguna tarea tiene fechas todavía. Asigna una fecha de inicio o
+            límite para verla en el cronograma.
+          </p>
+        </div>
         <UnscheduledList tasks={unscheduled} workspaceId={workspaceId} />
       </div>
     );
@@ -110,12 +112,12 @@ export function TaskGantt({
 
   return (
     <div>
-      <div className="overflow-x-auto rounded-md border">
+      <div className="glass no-scrollbar overflow-x-auto rounded-3xl">
         <div style={{ width: LEFT_W + timelineW }}>
           {/* Cabecera: meses + números de día */}
-          <div className="bg-muted/40 flex border-b">
+          <div className="border-border/60 flex border-b">
             <div
-              className="bg-muted/40 sticky left-0 z-10 shrink-0 border-r"
+              className="border-border/60 sticky left-0 z-10 shrink-0 border-r"
               style={{ width: LEFT_W }}
             />
             <div className="relative" style={{ width: timelineW }}>
@@ -164,7 +166,7 @@ export function TaskGantt({
               >
                 <Link
                   href={`/w/${workspaceId}/tasks/${task.number}`}
-                  className="bg-background hover:bg-accent sticky left-0 z-10 flex shrink-0 items-center gap-1.5 border-r px-2 text-sm"
+                  className="bg-card hover:bg-accent border-border/60 transition-ios sticky left-0 z-10 flex shrink-0 items-center gap-1.5 border-r px-3 text-sm"
                   style={{ width: LEFT_W }}
                 >
                   <span
@@ -197,7 +199,7 @@ export function TaskGantt({
                     href={`/w/${workspaceId}/tasks/${task.number}`}
                     title={`#${task.number} ${task.title} · ${range}`}
                     className={cn(
-                      "absolute top-1/2 flex -translate-y-1/2 items-center overflow-hidden rounded px-1.5 text-[11px] text-white hover:opacity-90",
+                      "transition-ios absolute top-1/2 flex -translate-y-1/2 items-center overflow-hidden rounded-full px-2 text-[11px] text-white hover:opacity-90",
                       BAR_CLASS[task.status],
                     )}
                     style={{
@@ -248,7 +250,7 @@ function UnscheduledList({
           <Link
             key={t.id}
             href={`/w/${workspaceId}/tasks/${t.number}`}
-            className="bg-muted hover:bg-accent flex items-center gap-1 rounded px-2 py-1 text-xs"
+            className="bg-muted hover:bg-accent transition-ios flex items-center gap-1 rounded-full px-2.5 py-1 text-xs"
           >
             <span
               className={cn(

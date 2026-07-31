@@ -18,7 +18,7 @@ export function AgendaTaskRow({
   const due = formatDueDate(task.dueDate);
 
   return (
-    <div className="hover:bg-accent/40 flex items-center gap-3 rounded-md border px-3 py-2">
+    <div className="hover:bg-accent/40 transition-ios flex items-center gap-3 px-4 py-2.5">
       <TaskStatusSelect
         taskId={task.id}
         workspaceId={workspaceId}
@@ -43,7 +43,7 @@ export function AgendaTaskRow({
       </Link>
       <span
         className={cn(
-          "rounded px-1.5 py-0.5 text-[11px] font-medium",
+          "rounded-full px-2 py-0.5 text-[11px] font-medium",
           PRIORITY_CLASS[task.priority],
         )}
       >

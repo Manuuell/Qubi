@@ -24,11 +24,11 @@ export function TaskCard({
   const isDone = task.status === "DONE";
 
   return (
-    <div className="bg-card rounded-md border p-2.5 shadow-sm">
+    <div className="bg-card transition-ios rounded-2xl p-3 shadow-sm hover:shadow-md">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span
           className={cn(
-            "rounded px-1.5 py-0.5 text-[11px] font-medium",
+            "rounded-full px-2 py-0.5 text-[11px] font-medium",
             PRIORITY_CLASS[task.priority],
           )}
         >

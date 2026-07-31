@@ -26,7 +26,7 @@ export function QuickAddTask({
 
   return (
     <form onSubmit={submit} className="flex items-center gap-2">
-      <div className="border-input focus-within:ring-ring flex flex-1 items-center gap-2 rounded-md border px-3 py-2 focus-within:ring-1">
+      <div className="glass focus-within:ring-ring transition-ios flex flex-1 items-center gap-2 rounded-full px-4 py-2 focus-within:ring-2">
         <Plus className="text-muted-foreground size-4 shrink-0" />
         <input
           value={title}

@@ -17,8 +17,8 @@ export function TaskBoard({
       {STATUS_ORDER.map((status) => {
         const columnTasks = tasks.filter((t) => t.status === status);
         return (
-          <div key={status} className="bg-muted/30 rounded-lg p-2">
-            <div className="mb-2 flex items-center gap-2 px-1 text-sm font-medium">
+          <div key={status} className="glass rounded-3xl p-2.5">
+            <div className="mb-2 flex items-center gap-2 px-2 py-1 text-sm font-medium">
               <span
                 className={cn("size-2.5 rounded-full", STATUS_DOT[status])}
               />
@@ -29,15 +29,19 @@ export function TaskBoard({
             </div>
             <div className="flex flex-col gap-2">
               {columnTasks.map((task) => (
-                <TaskCard
+                <div
                   key={task.id}
-                  task={task}
-                  workspaceId={workspaceId}
-                  projectId={projectId}
-                />
+                  className="animate-in fade-in-0 slide-in-from-top-1 duration-200"
+                >
+                  <TaskCard
+                    task={task}
+                    workspaceId={workspaceId}
+                    projectId={projectId}
+                  />
+                </div>
               ))}
               {columnTasks.length === 0 && (
-                <p className="text-muted-foreground px-1 py-3 text-xs">
+                <p className="text-muted-foreground px-2 py-3 text-xs">
                   Sin tareas.
                 </p>
               )}

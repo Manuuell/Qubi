@@ -31,7 +31,7 @@ export function TaskDescription({
       onBlur={save}
       rows={4}
       placeholder="Añade una descripción…"
-      className="bg-background focus:ring-ring placeholder:text-muted-foreground w-full rounded-md border p-3 text-sm outline-none focus:ring-1"
+      className="bg-background focus:ring-ring transition-ios placeholder:text-muted-foreground w-full rounded-2xl border p-3.5 text-sm outline-none focus:ring-2"
     />
   );
 }

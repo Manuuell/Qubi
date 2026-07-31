@@ -32,7 +32,7 @@ export function TaskCommentForm({
         ref={ref}
         rows={3}
         placeholder="Escribe un comentario…"
-        className="bg-background focus:ring-ring w-full rounded-md border p-2 text-sm outline-none focus:ring-1"
+        className="bg-background focus:ring-ring transition-ios w-full rounded-2xl border p-3 text-sm outline-none focus:ring-2"
       />
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>

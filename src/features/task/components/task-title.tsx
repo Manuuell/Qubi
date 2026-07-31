@@ -30,7 +30,7 @@ export function TaskTitle({
       onChange={(e) => setTitle(e.target.value)}
       onBlur={save}
       placeholder="Sin título"
-      className="placeholder:text-muted-foreground/40 font-display w-full bg-transparent text-3xl font-bold tracking-tight outline-none"
+      className="placeholder:text-muted-foreground/40 font-heading w-full bg-transparent text-3xl font-bold tracking-tight outline-none"
     />
   );
 }

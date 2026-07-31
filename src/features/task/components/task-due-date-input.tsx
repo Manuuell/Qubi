@@ -33,7 +33,7 @@ export function TaskDueDateInput({
           }),
         )
       }
-      className="border-input bg-background hover:bg-accent cursor-pointer rounded border px-1.5 py-0.5 text-xs outline-none disabled:opacity-50"
+      className="border-input bg-background hover:bg-accent transition-ios cursor-pointer rounded-full border px-2.5 py-1 text-xs outline-none disabled:opacity-50"
     />
   );
 }
