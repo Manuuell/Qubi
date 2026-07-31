@@ -26,7 +26,7 @@ export function RoleBadge({
   return (
     <span
       className={cn(
-        "rounded px-1.5 py-0.5 text-[11px] font-medium",
+        "rounded-full px-2.5 py-0.5 text-[11px] font-medium",
         ROLE_CLASS[role],
         className,
       )}

@@ -59,9 +59,9 @@ export function WorkspaceSwitcher({
     <div className="relative px-2 pt-2">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="hover:bg-accent flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-semibold"
+        className="hover:bg-accent transition-ios flex w-full items-center gap-2 rounded-full px-2.5 py-1.5 text-sm font-semibold"
       >
-        <span className="bg-primary/10 grid size-6 shrink-0 place-items-center rounded text-xs">
+        <span className="bg-primary/10 text-primary grid size-6 shrink-0 place-items-center rounded-full text-xs">
           {current.icon ?? "Q"}
         </span>
         <span className="min-w-0 truncate">{current.name}</span>
@@ -71,21 +71,21 @@ export function WorkspaceSwitcher({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="bg-popover absolute inset-x-2 z-20 mt-1 rounded-lg border p-1 shadow-lg">
-            <p className="text-muted-foreground px-2 py-1 text-xs">
+          <div className="glass-strong animate-in fade-in-0 zoom-in-95 absolute inset-x-2 z-20 mt-1 rounded-2xl p-1.5 duration-150">
+            <p className="text-muted-foreground px-2.5 py-1 text-xs">
               Tus espacios
             </p>
             {workspaces.map((w) => (
               <div
                 key={w.id}
-                className="group hover:bg-accent flex items-center gap-1 rounded pr-1"
+                className="group hover:bg-accent transition-ios flex items-center gap-1 rounded-xl pr-1"
               >
                 <Link
                   href={`/w/${w.id}`}
                   onClick={() => setOpen(false)}
-                  className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-sm"
+                  className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-sm"
                 >
-                  <span className="bg-primary/10 grid size-5 shrink-0 place-items-center rounded text-[10px]">
+                  <span className="bg-primary/10 text-primary grid size-5 shrink-0 place-items-center rounded-full text-[10px]">
                     {w.icon ?? "Q"}
                   </span>
                   <span className="min-w-0 truncate">{w.name}</span>
@@ -99,7 +99,7 @@ export function WorkspaceSwitcher({
                       onClick={() => renameWorkspace(w)}
                       disabled={pending}
                       aria-label={`Renombrar ${w.name}`}
-                      className="text-muted-foreground hover:bg-accent-foreground/10 hover:text-foreground grid size-6 shrink-0 place-items-center rounded opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                      className="text-muted-foreground hover:bg-accent-foreground/10 hover:text-foreground transition-ios grid size-6 shrink-0 place-items-center rounded-full opacity-0 group-hover:opacity-100 disabled:opacity-50"
                     >
                       <Pencil className="size-3.5" />
                     </button>
@@ -107,7 +107,7 @@ export function WorkspaceSwitcher({
                       onClick={() => deleteWorkspace(w)}
                       disabled={pending}
                       aria-label={`Eliminar ${w.name}`}
-                      className="text-muted-foreground hover:bg-accent-foreground/10 hover:text-destructive grid size-6 shrink-0 place-items-center rounded opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                      className="text-muted-foreground hover:bg-accent-foreground/10 hover:text-destructive transition-ios grid size-6 shrink-0 place-items-center rounded-full opacity-0 group-hover:opacity-100 disabled:opacity-50"
                     >
                       <Trash2 className="size-3.5" />
                     </button>
@@ -118,7 +118,7 @@ export function WorkspaceSwitcher({
             <button
               onClick={createWorkspace}
               disabled={pending}
-              className="text-muted-foreground hover:bg-accent hover:text-foreground mt-1 flex w-full items-center gap-2 border-t px-2 py-1.5 text-sm disabled:opacity-50"
+              className="text-muted-foreground hover:bg-accent hover:text-foreground border-border/60 transition-ios mt-1 flex w-full items-center gap-2 rounded-xl border-t px-2.5 py-1.5 text-sm disabled:opacity-50"
             >
               <Plus className="size-4" />
               Crear espacio

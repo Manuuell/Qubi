@@ -44,7 +44,7 @@ export function NotificationBell({ inbox }: { inbox: Inbox }) {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Notificaciones"
-        className="text-muted-foreground hover:bg-accent hover:text-foreground relative grid size-7 place-items-center rounded"
+        className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios relative grid size-7 place-items-center rounded-full"
       >
         <Bell className="size-4" />
         {unreadCount > 0 && (
@@ -57,8 +57,8 @@ export function NotificationBell({ inbox }: { inbox: Inbox }) {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="bg-popover absolute bottom-full left-0 z-20 mb-1 max-h-[28rem] w-80 overflow-y-auto rounded-lg border shadow-lg">
-            <div className="bg-popover sticky top-0 flex items-center justify-between border-b px-3 py-2">
+          <div className="glass-strong animate-in fade-in-0 zoom-in-95 absolute bottom-full left-0 z-20 mb-2 max-h-[28rem] w-80 overflow-y-auto rounded-3xl duration-150">
+            <div className="border-border/60 sticky top-0 flex items-center justify-between border-b bg-clip-padding px-4 py-3">
               <p className="text-sm font-medium">Notificaciones</p>
               {notifications.some((n) => !n.readAt) && (
                 <button
@@ -78,10 +78,10 @@ export function NotificationBell({ inbox }: { inbox: Inbox }) {
                 No tienes notificaciones.
               </p>
             ) : (
-              <ul className="divide-y">
+              <ul className="divide-border/60 divide-y">
                 {/* Invitaciones a espacios: requieren aceptar o rechazar. */}
                 {invites.map((inv) => (
-                  <li key={inv.id} className="px-3 py-3">
+                  <li key={inv.id} className="px-4 py-3">
                     <div className="flex gap-2">
                       <UserPlus className="text-muted-foreground mt-0.5 size-4 shrink-0" />
                       <div className="min-w-0 flex-1">
@@ -104,7 +104,7 @@ export function NotificationBell({ inbox }: { inbox: Inbox }) {
                               )
                             }
                             disabled={pending}
-                            className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium disabled:opacity-50"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 transition-ios inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium disabled:opacity-50"
                           >
                             <Check className="size-3" />
                             Aceptar
@@ -116,7 +116,7 @@ export function NotificationBell({ inbox }: { inbox: Inbox }) {
                               )
                             }
                             disabled={pending}
-                            className="hover:bg-accent inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs disabled:opacity-50"
+                            className="hover:bg-accent transition-ios inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs disabled:opacity-50"
                           >
                             <X className="size-3" />
                             Rechazar
@@ -132,7 +132,7 @@ export function NotificationBell({ inbox }: { inbox: Inbox }) {
                   <li key={n.id}>
                     <button
                       onClick={() => openNotification(n)}
-                      className="hover:bg-accent flex w-full gap-2 px-3 py-3 text-left"
+                      className="hover:bg-accent transition-ios flex w-full gap-2 px-4 py-3 text-left"
                     >
                       {!n.readAt && (
                         <span className="bg-primary mt-1.5 size-2 shrink-0 rounded-full" />

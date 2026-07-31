@@ -38,7 +38,7 @@ export function AccountMenu({
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Opciones de cuenta"
-        className="text-muted-foreground hover:bg-accent hover:text-foreground grid size-7 place-items-center rounded"
+        className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios grid size-7 place-items-center rounded-full"
       >
         <MoreHorizontal className="size-4" />
       </button>
@@ -46,10 +46,10 @@ export function AccountMenu({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={close} />
-          <div className="bg-popover absolute right-0 bottom-full z-20 mb-1 w-60 rounded-lg border p-1 shadow-lg">
+          <div className="glass-strong animate-in fade-in-0 zoom-in-95 absolute right-0 bottom-full z-20 mb-2 w-60 rounded-2xl p-1.5 duration-150">
             {/* Cuenta activa */}
-            <div className="flex items-center gap-2 px-2 py-1.5">
-              <span className="bg-primary/10 grid size-7 shrink-0 place-items-center rounded-full text-xs font-medium">
+            <div className="flex items-center gap-2 px-2.5 py-1.5">
+              <span className="bg-primary/10 text-primary grid size-7 shrink-0 place-items-center rounded-full text-xs font-medium">
                 {current.name.charAt(0).toUpperCase()}
               </span>
               <div className="min-w-0 flex-1">
@@ -64,14 +64,14 @@ export function AccountMenu({
             {/* Otras cuentas recordadas */}
             {accounts.length > 0 && (
               <>
-                <div className="my-1 border-t" />
-                <p className="text-muted-foreground px-2 py-1 text-[11px]">
+                <div className="border-border/60 my-1 border-t" />
+                <p className="text-muted-foreground px-2.5 py-1 text-[11px]">
                   Cambiar de cuenta
                 </p>
                 {accounts.map((a) => (
                   <div
                     key={a.userId}
-                    className="group hover:bg-accent flex items-center gap-2 rounded pr-1"
+                    className="group hover:bg-accent transition-ios flex items-center gap-2 rounded-xl pr-1"
                   >
                     <button
                       onClick={() =>
@@ -80,7 +80,7 @@ export function AccountMenu({
                         )
                       }
                       disabled={pending}
-                      className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left disabled:opacity-50"
+                      className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left disabled:opacity-50"
                     >
                       <span className="bg-muted grid size-7 shrink-0 place-items-center rounded-full text-xs font-medium">
                         {(a.name || a.email).charAt(0).toUpperCase()}
@@ -100,7 +100,7 @@ export function AccountMenu({
                       }
                       disabled={pending}
                       aria-label={`Quitar ${a.email} de este navegador`}
-                      className="text-muted-foreground hover:bg-accent-foreground/10 hover:text-foreground grid size-6 shrink-0 place-items-center rounded opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                      className="text-muted-foreground hover:bg-accent-foreground/10 hover:text-foreground transition-ios grid size-6 shrink-0 place-items-center rounded-full opacity-0 group-hover:opacity-100 disabled:opacity-50"
                     >
                       <X className="size-3.5" />
                     </button>
@@ -109,12 +109,12 @@ export function AccountMenu({
               </>
             )}
 
-            <div className="my-1 border-t" />
+            <div className="border-border/60 my-1 border-t" />
 
             <Link
               href="/account"
               onClick={close}
-              className="hover:bg-accent flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm"
+              className="hover:bg-accent transition-ios flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-sm"
             >
               <KeyRound className="size-4" />
               Cambiar contraseña
@@ -122,7 +122,7 @@ export function AccountMenu({
             <form action={prepareAddAccountAction}>
               <button
                 type="submit"
-                className="hover:bg-accent flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm"
+                className="hover:bg-accent transition-ios flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-sm"
               >
                 <Plus className="size-4" />
                 Agregar otra cuenta
@@ -131,7 +131,7 @@ export function AccountMenu({
             <form action={logoutAction}>
               <button
                 type="submit"
-                className="hover:bg-accent text-destructive flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm"
+                className="hover:bg-accent text-destructive transition-ios flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-sm"
               >
                 <LogOut className="size-4" />
                 Cerrar sesión

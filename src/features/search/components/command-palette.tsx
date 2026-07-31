@@ -73,35 +73,35 @@ export function CommandPalette() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="text-muted-foreground hover:bg-accent hover:text-foreground flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors"
+        className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex w-full items-center gap-2 rounded-full px-3 py-1.5 text-sm"
       >
         <Search className="size-4" />
         Buscar
-        <kbd className="bg-muted ml-auto rounded border px-1 text-[10px]">
+        <kbd className="bg-card ml-auto rounded-full border px-1.5 text-[10px]">
           ⌘K
         </kbd>
       </button>
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[15vh]"
+          className="animate-in fade-in-0 fixed inset-0 z-50 flex items-start justify-center bg-black/30 p-4 pt-[15vh] backdrop-blur-sm duration-150"
           onClick={() => close()}
         >
           <div
-            className="bg-background w-full max-w-lg overflow-hidden rounded-xl border shadow-2xl"
+            className="glass-strong animate-in fade-in-0 zoom-in-95 w-full max-w-lg overflow-hidden rounded-3xl duration-150"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-2 border-b px-3">
+            <div className="border-border/60 flex items-center gap-2 border-b px-4">
               <Search className="text-muted-foreground size-4" />
               <input
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar páginas…"
-                className="w-full bg-transparent py-3 text-sm outline-none"
+                className="w-full bg-transparent py-3.5 text-sm outline-none"
               />
             </div>
-            <ul className="max-h-80 overflow-y-auto p-1">
+            <ul className="max-h-80 overflow-y-auto p-1.5">
               {results.length === 0 ? (
                 <li className="text-muted-foreground px-3 py-6 text-center text-sm">
                   {query.trim() ? "Sin resultados" : "Escribe para buscar"}
@@ -113,7 +113,7 @@ export function CommandPalette() {
                     <li key={r.id}>
                       <button
                         onClick={() => go(r)}
-                        className="hover:bg-accent flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm"
+                        className="hover:bg-accent transition-ios flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-left text-sm"
                       >
                         <Icon className="text-muted-foreground size-4 shrink-0" />
                         <span className="truncate">
