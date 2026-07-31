@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/db";
-import { WorkspaceRole } from "@/generated/prisma/enums";
-import { assertWorkspaceAdmin } from "@/server/lib/permissions";
+import { IssueStatus, WorkspaceRole } from "@/generated/prisma/enums";
+import {
+  assertWorkspaceAdmin,
+  assertWorkspaceMember,
+  getWorkspaceRole,
+  isAdminRole,
+} from "@/server/lib/permissions";
 
 export function getWorkspaceMembers(workspaceId: string) {
   return prisma.workspaceMember.findMany({
@@ -68,4 +73,79 @@ export async function changeMemberRole(
     where: { workspaceId_userId: { workspaceId, userId: targetUserId } },
     data: { role: newRole },
   });
+}
+
+export type MemberProfile = {
+  userId: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+  role: WorkspaceRole;
+  joinedAt: Date;
+  isSelf: boolean;
+  // Solo visible para el propio usuario o para OWNER/ADMIN (evita filtrar
+  // horas/productividad de un compañero a cualquier otro miembro).
+  stats: { minutesThisMonth: number; tasksCompleted: number } | null;
+};
+
+// Perfil de un miembro dentro del espacio. La info básica (foto, nombre,
+// rol, fecha de ingreso) la ve cualquier miembro; las estadísticas de
+// productividad solo el propio usuario o un admin.
+export async function getMemberProfile(
+  workspaceId: string,
+  targetUserId: string,
+  viewerUserId: string,
+): Promise<MemberProfile | null> {
+  await assertWorkspaceMember(workspaceId, viewerUserId);
+
+  const member = await prisma.workspaceMember.findUnique({
+    where: { workspaceId_userId: { workspaceId, userId: targetUserId } },
+    include: {
+      user: { select: { id: true, name: true, email: true, image: true } },
+    },
+  });
+  if (!member) return null;
+
+  const isSelf = viewerUserId === targetUserId;
+  const viewerRole = await getWorkspaceRole(workspaceId, viewerUserId);
+  const canSeeStats = isSelf || isAdminRole(viewerRole);
+
+  let stats: MemberProfile["stats"] = null;
+  if (canSeeStats) {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const [minutesAgg, tasksCompleted] = await Promise.all([
+      prisma.timeEntry.aggregate({
+        where: {
+          userId: targetUserId,
+          project: { workspaceId },
+          date: { gte: monthStart, lt: monthEnd },
+        },
+        _sum: { minutes: true },
+      }),
+      prisma.issue.count({
+        where: {
+          workspaceId,
+          assigneeId: targetUserId,
+          status: IssueStatus.DONE,
+        },
+      }),
+    ]);
+    stats = {
+      minutesThisMonth: minutesAgg._sum.minutes ?? 0,
+      tasksCompleted,
+    };
+  }
+
+  return {
+    userId: member.user.id,
+    name: member.user.name,
+    email: member.user.email,
+    image: member.user.image,
+    role: member.role,
+    joinedAt: member.createdAt,
+    isSelf,
+    stats,
+  };
 }

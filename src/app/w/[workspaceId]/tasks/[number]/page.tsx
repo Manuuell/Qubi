@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getTaskDetail } from "@/server/services/task";
 import { getWorkspaceMembers } from "@/server/services/member";
 import { RoleBadge } from "@/features/workspace/components/role-badge";
+import { UserPreview } from "@/features/workspace/components/user-preview";
 import { TaskTitle } from "@/features/task/components/task-title";
 import { TaskDescription } from "@/features/task/components/task-description";
 import { TaskCommentForm } from "@/features/task/components/task-comment-form";
@@ -153,11 +154,17 @@ export default async function TaskDetailPage({
         {task.comments.map((c) => (
           <Card key={c.id} variant="glass" className="gap-1.5 p-3.5">
             <div className="flex items-center gap-1.5">
-              <span className="text-muted-foreground text-xs">
-                {personName(c.author)}
-              </span>
-              {c.author && roleByUserId[c.author.id] && (
-                <RoleBadge role={roleByUserId[c.author.id]} />
+              {c.author ? (
+                <UserPreview
+                  workspaceId={workspaceId}
+                  userId={c.author.id}
+                  name={c.author.name}
+                  email={c.author.email}
+                  image={c.author.image}
+                  role={roleByUserId[c.author.id]}
+                />
+              ) : (
+                <span className="text-muted-foreground text-xs">alguien</span>
               )}
             </div>
             {c.body && <p className="text-sm whitespace-pre-wrap">{c.body}</p>}

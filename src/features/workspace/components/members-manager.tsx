@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
+import Link from "next/link";
 import { MailQuestion, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserPreview } from "@/features/workspace/components/user-preview";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,7 @@ type Member = {
   role: WorkspaceRole;
   email: string;
   name: string | null;
+  image: string | null;
 };
 
 type Invite = {
@@ -157,9 +159,6 @@ export function MembersManager({
             const isTargetOwner = m.role === WorkspaceRole.OWNER;
             const canChangeRole = isOwner && !isSelf && !isTargetOwner;
             const canRemove = isAdmin && !isSelf && !isTargetOwner;
-            const initial = (
-              m.name?.trim()?.charAt(0) || m.email.charAt(0)
-            ).toUpperCase();
 
             return (
               <div
@@ -167,14 +166,23 @@ export function MembersManager({
                 className="flex items-center justify-between gap-3 px-4 py-2.5"
               >
                 <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <Avatar>
-                    <AvatarFallback>{initial}</AvatarFallback>
-                  </Avatar>
+                  <UserPreview
+                    workspaceId={workspaceId}
+                    userId={m.userId}
+                    name={m.name}
+                    email={m.email}
+                    image={m.image}
+                    role={m.role}
+                    showName={false}
+                  />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-medium">
+                      <Link
+                        href={`/w/${workspaceId}/members/${m.userId}`}
+                        className="truncate text-sm font-medium hover:underline"
+                      >
                         {m.name || m.email}
-                      </p>
+                      </Link>
                       {isSelf && (
                         <span className="text-muted-foreground text-[11px]">
                           (tú)

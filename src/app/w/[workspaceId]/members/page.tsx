@@ -42,6 +42,7 @@ export default async function MembersPage({
           role: m.role,
           email: m.user.email,
           name: m.user.name,
+          image: m.user.image,
         }))}
         invites={invites.map((i) => ({
           id: i.id,

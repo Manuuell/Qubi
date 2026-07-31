@@ -195,7 +195,11 @@ export async function getTaskDetail(
       assignee: { select: { id: true, name: true, email: true } },
       comments: {
         orderBy: { createdAt: "asc" },
-        include: { author: { select: { id: true, name: true, email: true } } },
+        include: {
+          author: {
+            select: { id: true, name: true, email: true, image: true },
+          },
+        },
       },
     },
   });
