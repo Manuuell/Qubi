@@ -69,16 +69,18 @@ export default async function HoursPage({
   const monthAnchor = isValidMonthKey(month) ? month : monthKeyOf();
 
   return (
-    <div className="mx-auto max-w-4xl px-10 py-12">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-10 sm:py-12">
       <div className="flex flex-wrap items-center gap-3">
-        <Clock className="text-muted-foreground size-6" />
-        <h1 className="font-display text-3xl font-bold tracking-tight">
+        <span className="bg-primary/10 text-primary grid size-11 shrink-0 place-items-center rounded-full">
+          <Clock className="size-5.5" />
+        </span>
+        <h1 className="font-heading text-3xl font-bold tracking-tight">
           Registro de horas
         </h1>
       </div>
 
       {isAdmin && (
-        <div className="text-muted-foreground mt-6 flex gap-4 border-b text-sm">
+        <div className="bg-muted mt-6 inline-flex items-center gap-0.5 rounded-full p-1 text-sm">
           {TABS.map((t) => {
             const href =
               t.key === "personal"
@@ -89,10 +91,10 @@ export default async function HoursPage({
                 key={t.key}
                 href={href}
                 className={cn(
-                  "-mb-px border-b-2 pb-2 transition-colors",
+                  "transition-ios rounded-full px-4 py-1.5",
                   view === t.key
-                    ? "border-foreground text-foreground font-medium"
-                    : "hover:text-foreground border-transparent",
+                    ? "bg-card text-foreground font-medium shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {t.label}
@@ -177,7 +179,7 @@ async function WeekView({
           workspaceId={workspaceId}
           todayKey={todayKey()}
         />
-        <p className="text-muted-foreground mt-4 text-xs">
+        <p className="text-muted-foreground mt-4 px-1 text-xs">
           Escribe las horas en cada celda (p. ej. <code>1.5</code> = 1 h 30 min)
           y pulsa Enter o sal del campo para guardar. El cronómetro suma su
           tiempo al detenerse.
@@ -220,14 +222,14 @@ function WeekShell({
         <Link
           href={`${base}week=${prevWeek}`}
           aria-label="Semana anterior"
-          className="hover:bg-accent grid size-8 place-items-center rounded-md border"
+          className="hover:bg-accent transition-ios glass grid size-8 place-items-center rounded-full"
         >
           <ChevronLeft className="size-4" />
         </Link>
         <Link
           href={`${base}week=${nextWeek}`}
           aria-label="Semana siguiente"
-          className="hover:bg-accent grid size-8 place-items-center rounded-md border"
+          className="hover:bg-accent transition-ios glass grid size-8 place-items-center rounded-full"
         >
           <ChevronRight className="size-4" />
         </Link>
@@ -235,7 +237,7 @@ function WeekShell({
         {weekStartKey !== thisWeek && (
           <Link
             href={thisWeekHref}
-            className="text-muted-foreground hover:text-foreground ml-2 text-sm underline"
+            className="text-primary hover:bg-accent transition-ios ml-2 rounded-full px-3 py-1 text-sm font-medium"
           >
             Esta semana
           </Link>
@@ -269,14 +271,14 @@ async function MonthView({
         <Link
           href={`/w/${workspaceId}/hours?view=summary&month=${prevMonth}`}
           aria-label="Mes anterior"
-          className="hover:bg-accent grid size-8 place-items-center rounded-md border"
+          className="hover:bg-accent transition-ios glass grid size-8 place-items-center rounded-full"
         >
           <ChevronLeft className="size-4" />
         </Link>
         <Link
           href={`/w/${workspaceId}/hours?view=summary&month=${nextMonth}`}
           aria-label="Mes siguiente"
-          className="hover:bg-accent grid size-8 place-items-center rounded-md border"
+          className="hover:bg-accent transition-ios glass grid size-8 place-items-center rounded-full"
         >
           <ChevronRight className="size-4" />
         </Link>
@@ -286,7 +288,7 @@ async function MonthView({
         {monthKey !== thisMonth && (
           <Link
             href={`/w/${workspaceId}/hours?view=summary`}
-            className="text-muted-foreground hover:text-foreground ml-2 text-sm underline"
+            className="text-primary hover:bg-accent transition-ios ml-2 rounded-full px-3 py-1 text-sm font-medium"
           >
             Este mes
           </Link>

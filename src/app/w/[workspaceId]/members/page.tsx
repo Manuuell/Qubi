@@ -25,8 +25,10 @@ export default async function MembersPage({
   if (!currentMember) notFound();
 
   return (
-    <div className="mx-auto max-w-3xl px-12 py-16">
-      <h1 className="mb-2 text-2xl font-bold tracking-tight">Miembros</h1>
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-12 sm:py-16">
+      <h1 className="font-heading mb-2 text-3xl font-bold tracking-tight">
+        Miembros
+      </h1>
       <p className="text-muted-foreground mb-6 text-sm">
         Invita personas por email. Recibirán la invitación en sus notificaciones
         y se unirán al espacio cuando la acepten.

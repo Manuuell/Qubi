@@ -58,7 +58,7 @@ export default async function PageView({
     ]);
 
     return (
-      <div className="mx-auto max-w-5xl px-12 py-16">
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-12 sm:py-16">
         {header}
         <PageTitle
           pageId={page.id}
@@ -76,7 +76,7 @@ export default async function PageView({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-12 py-16">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-12 sm:py-16">
       {header}
       <PageTitle
         pageId={page.id}

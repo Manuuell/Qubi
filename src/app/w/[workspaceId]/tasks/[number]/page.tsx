@@ -13,6 +13,7 @@ import { TaskAssigneeSelect } from "@/features/task/components/task-assignee-sel
 import { TaskPrioritySelect } from "@/features/task/components/task-priority-select";
 import { TaskStartDateInput } from "@/features/task/components/task-start-date-input";
 import { TaskDueDateInput } from "@/features/task/components/task-due-date-input";
+import { Card } from "@/components/ui/card";
 
 function personName(p: { name: string | null; email: string } | null) {
   return p?.name?.trim() || p?.email || "alguien";
@@ -46,10 +47,10 @@ export default async function TaskDetailPage({
     : `/w/${workspaceId}/agenda`;
 
   return (
-    <div className="mx-auto max-w-3xl px-10 py-12">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-10 sm:py-12">
       <Link
         href={backHref}
-        className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1.5 text-sm"
+        className="text-muted-foreground hover:text-foreground transition-ios mb-4 inline-flex items-center gap-1.5 text-sm"
       >
         <ArrowLeft className="size-4" />
         {task.project ? (
@@ -77,7 +78,10 @@ export default async function TaskDetailPage({
         <span className="text-muted-foreground text-xl">#{task.number}</span>
       </div>
 
-      <div className="bg-card mt-5 grid grid-cols-1 gap-4 rounded-md border p-4 sm:grid-cols-2">
+      <Card
+        variant="glass"
+        className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2"
+      >
         <Field label="Estado">
           <TaskStatusSelect
             taskId={task.id}
@@ -95,7 +99,7 @@ export default async function TaskDetailPage({
           />
         </Field>
         <Field label="Responsable">
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <TaskAssigneeSelect
               taskId={task.id}
               workspaceId={workspaceId}
@@ -124,9 +128,9 @@ export default async function TaskDetailPage({
             dueDate={task.dueDate}
           />
         </Field>
-      </div>
+      </Card>
 
-      <p className="text-muted-foreground mt-3 text-xs">
+      <p className="text-muted-foreground mt-3 px-1 text-xs">
         Creada por {personName(task.author)}
       </p>
 
@@ -147,8 +151,8 @@ export default async function TaskDetailPage({
           Comentarios ({task.comments.length})
         </h2>
         {task.comments.map((c) => (
-          <div key={c.id} className="bg-card rounded-md border p-3">
-            <div className="mb-1 flex items-center gap-1.5">
+          <Card key={c.id} variant="glass" className="gap-1.5 p-3.5">
+            <div className="flex items-center gap-1.5">
               <span className="text-muted-foreground text-xs">
                 {personName(c.author)}
               </span>
@@ -157,7 +161,7 @@ export default async function TaskDetailPage({
               )}
             </div>
             <p className="text-sm whitespace-pre-wrap">{c.body}</p>
-          </div>
+          </Card>
         ))}
         <TaskCommentForm
           taskId={task.id}
@@ -177,8 +181,10 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-muted-foreground text-sm">{label}</span>
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+        {label}
+      </span>
       {children}
     </div>
   );

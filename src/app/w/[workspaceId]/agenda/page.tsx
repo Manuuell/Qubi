@@ -56,26 +56,37 @@ export default async function AgendaPage({
   ].filter((s) => buckets[s.key].length > 0);
 
   return (
-    <div className="mx-auto max-w-3xl px-10 py-12">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-10 sm:py-12">
       <div className="flex items-center gap-3">
-        <CalendarCheck className="text-muted-foreground size-6" />
-        <h1 className="font-display text-3xl font-bold tracking-tight">
+        <span className="bg-primary/10 text-primary grid size-11 shrink-0 place-items-center rounded-full">
+          <CalendarCheck className="size-5.5" />
+        </span>
+        <h1 className="font-heading text-3xl font-bold tracking-tight">
           Mi agenda
         </h1>
-        <span className="text-muted-foreground ml-auto text-sm">
+        <span className="text-muted-foreground bg-muted ml-auto rounded-full px-3 py-1 text-sm">
           {tasks.length} pendiente{tasks.length === 1 ? "" : "s"}
         </span>
       </div>
 
       {tasks.length === 0 ? (
-        <p className="text-muted-foreground py-16 text-center text-sm">
-          No tienes tareas pendientes asignadas. 🎉
-        </p>
+        <div className="glass mt-8 rounded-3xl py-16 text-center">
+          <p className="text-muted-foreground text-sm">
+            No tienes tareas pendientes asignadas.
+          </p>
+        </div>
       ) : (
         <div className="mt-8 space-y-6">
-          {sections.map((s) => (
-            <section key={s.key}>
-              <h2 className="mb-2 flex items-center gap-2 text-sm font-medium">
+          {sections.map((s, i) => (
+            <section
+              key={s.key}
+              className="animate-in fade-in-0 slide-in-from-bottom-1 duration-300"
+              style={{
+                animationDelay: `${i * 60}ms`,
+                animationFillMode: "backwards",
+              }}
+            >
+              <h2 className="mb-2 flex items-center gap-2 px-1 text-sm font-medium">
                 <span className={cn(s.danger && "text-destructive")}>
                   {s.label}
                 </span>
@@ -83,7 +94,7 @@ export default async function AgendaPage({
                   {buckets[s.key].length}
                 </span>
               </h2>
-              <div className="space-y-1.5">
+              <div className="glass divide-border/60 divide-y overflow-hidden rounded-3xl">
                 {buckets[s.key].map((task) => (
                   <AgendaTaskRow
                     key={task.id}

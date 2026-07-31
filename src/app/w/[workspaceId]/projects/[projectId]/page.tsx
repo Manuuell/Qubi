@@ -54,7 +54,7 @@ export default async function ProjectPage({
   }));
 
   return (
-    <div className="mx-auto max-w-5xl px-10 py-12">
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-10 sm:py-12">
       <div className="flex items-center gap-3">
         <span
           className="size-3.5 shrink-0 rounded-full"
@@ -77,29 +77,31 @@ export default async function ProjectPage({
         <QuickAddTask workspaceId={workspaceId} projectId={projectId} />
       </div>
 
-      <div className="text-muted-foreground mt-6 flex gap-4 border-b text-sm">
-        {VIEWS.map((v) => {
-          const active = view === v.key;
-          const href =
-            v.key === "board"
-              ? `/w/${workspaceId}/projects/${projectId}`
-              : `/w/${workspaceId}/projects/${projectId}?view=${v.key}`;
-          return (
-            <Link
-              key={v.key}
-              href={href}
-              className={cn(
-                "-mb-px flex items-center gap-1.5 border-b-2 pb-2 transition-colors",
-                active
-                  ? "border-foreground text-foreground font-medium"
-                  : "hover:text-foreground border-transparent",
-              )}
-            >
-              <v.icon className="size-4" />
-              {v.label}
-            </Link>
-          );
-        })}
+      <div className="no-scrollbar mt-6 max-w-full overflow-x-auto">
+        <div className="bg-muted inline-flex w-max items-center gap-0.5 rounded-full p-1 text-sm">
+          {VIEWS.map((v) => {
+            const active = view === v.key;
+            const href =
+              v.key === "board"
+                ? `/w/${workspaceId}/projects/${projectId}`
+                : `/w/${workspaceId}/projects/${projectId}?view=${v.key}`;
+            return (
+              <Link
+                key={v.key}
+                href={href}
+                className={cn(
+                  "transition-ios flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 whitespace-nowrap",
+                  active
+                    ? "bg-card text-foreground font-medium shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <v.icon className="size-4" />
+                {v.label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-6">
