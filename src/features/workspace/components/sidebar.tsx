@@ -331,6 +331,7 @@ export function Sidebar({
           >
             <div className="min-w-0 flex-1 [&_span]:text-xs">
               <UserPreview
+                onNavigate={() => setOpen(false)}
                 workspaceId={workspace.id}
                 userId={userId}
                 name={userName}
@@ -352,6 +353,7 @@ export function Sidebar({
             <AccountMenu
               current={{ name: userName, email: userEmail }}
               accounts={accounts}
+              onNavigate={() => setOpen(false)}
             />
           </div>
         </div>

@@ -2,7 +2,15 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, KeyRound, LogOut, MoreHorizontal, Plus, X } from "lucide-react";
+import {
+  Check,
+  KeyRound,
+  LogOut,
+  MoreHorizontal,
+  Plus,
+  UserRound,
+  X,
+} from "lucide-react";
 import { logoutAction } from "@/server/actions/auth";
 import {
   prepareAddAccountAction,
@@ -22,15 +30,26 @@ type Account = {
 export function AccountMenu({
   current,
   accounts,
+  onNavigate,
 }: {
   current: { name: string; email: string };
   accounts: Account[];
+  /** Se llama al navegar desde el menú: cierra también el cajón en móvil. */
+  onNavigate?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function close() {
     setOpen(false);
+  }
+
+  // Al ir a otra pantalla hay que cerrar el desplegable Y el menú lateral de
+  // móvil: si el cajón se queda abierto, tapa la página y parece que el clic
+  // no hizo nada.
+  function closeAndNavigate() {
+    close();
+    onNavigate?.();
   }
 
   return (
@@ -113,7 +132,15 @@ export function AccountMenu({
 
             <Link
               href="/account"
-              onClick={close}
+              onClick={closeAndNavigate}
+              className="hover:bg-accent transition-ios flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-sm"
+            >
+              <UserRound className="size-4" />
+              Tu perfil
+            </Link>
+            <Link
+              href="/account"
+              onClick={closeAndNavigate}
               className="hover:bg-accent transition-ios flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-sm"
             >
               <KeyRound className="size-4" />

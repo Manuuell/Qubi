@@ -18,6 +18,7 @@ export function UserPreview({
   role,
   showName = true,
   currentUserId,
+  onNavigate,
 }: {
   workspaceId: string;
   userId: string;
@@ -27,10 +28,21 @@ export function UserPreview({
   role?: WorkspaceRole;
   showName?: boolean;
   currentUserId?: string;
+  /** Se llama al ir al perfil: lo usa el sidebar para cerrar el menú móvil. */
+  onNavigate?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const initial = (name?.trim()?.charAt(0) || email.charAt(0)).toUpperCase();
   const label = name?.trim() || email;
+
+  // Tu propio perfil vive en /account. Se enlaza directo en vez de pasar por
+  // /members/[userId], que redirige en el servidor: esa redirección solo
+  // funciona al cargar la página entera y en una navegación del cliente
+  // (un clic en el menú) se quedaba sin hacer nada.
+  const isSelf = currentUserId != null && currentUserId === userId;
+  const profileHref = isSelf
+    ? "/account"
+    : `/w/${workspaceId}/members/${userId}`;
 
   return (
     <div className="relative flex min-w-0 items-center gap-2">
@@ -47,7 +59,8 @@ export function UserPreview({
 
       {showName && (
         <Link
-          href={`/w/${workspaceId}/members/${userId}`}
+          href={profileHref}
+          onClick={onNavigate}
           className="min-w-0 truncate text-sm font-medium hover:underline"
         >
           {label}
@@ -72,11 +85,14 @@ export function UserPreview({
               </div>
             )}
             <Link
-              href={`/w/${workspaceId}/members/${userId}`}
-              onClick={() => setOpen(false)}
+              href={profileHref}
+              onClick={() => {
+                setOpen(false);
+                onNavigate?.();
+              }}
               className="text-primary mt-3 block text-xs font-medium hover:underline"
             >
-              Ver perfil
+              {isSelf ? "Ver tu perfil" : "Ver perfil"}
             </Link>
             {currentUserId && currentUserId !== userId && (
               <StartChatButton
