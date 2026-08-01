@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { assertWorkspaceMember } from "@/server/lib/permissions";
 import { getProject } from "@/server/services/project";
 import { publishToUser } from "@/server/lib/event-bus";
+import { QUICK_REACTIONS } from "@/features/task/labels";
 
 const personSelect = {
   id: true,
@@ -204,12 +205,17 @@ export async function getConversation(conversationId: string, userId: string) {
   };
 }
 
+const messageInclude = {
+  sender: { select: personSelect },
+  reactions: { include: { user: { select: personSelect } } },
+} as const;
+
 export async function listMessages(conversationId: string, userId: string) {
   await assertParticipant(conversationId, userId);
   return prisma.chatMessage.findMany({
     where: { conversationId },
     orderBy: { createdAt: "asc" },
-    include: { sender: { select: personSelect } },
+    include: messageInclude,
   });
 }
 
@@ -223,8 +229,40 @@ export async function listMessagesSince(
   return prisma.chatMessage.findMany({
     where: { conversationId, createdAt: { gt: after } },
     orderBy: { createdAt: "asc" },
-    include: { sender: { select: personSelect } },
+    include: messageInclude,
   });
+}
+
+// Alterna una reacción propia a un mensaje (agrega si no la tenía, quita si
+// ya la tenía). No dispara un evento SSE dedicado: quien reaccionó lo ve al
+// instante (actualización optimista en el cliente) y el resto lo ve al
+// llegar el próximo mensaje o al reabrir la conversación.
+export async function toggleMessageReaction(
+  messageId: string,
+  userId: string,
+  emoji: string,
+) {
+  if (!(QUICK_REACTIONS as readonly string[]).includes(emoji)) {
+    throw new Error("Reacción no válida");
+  }
+  const message = await prisma.chatMessage.findUnique({
+    where: { id: messageId },
+    select: { conversationId: true },
+  });
+  if (!message) throw new Error("Mensaje no encontrado");
+  await assertParticipant(message.conversationId, userId);
+
+  const existing = await prisma.chatMessageReaction.findUnique({
+    where: { messageId_userId_emoji: { messageId, userId, emoji } },
+  });
+  if (existing) {
+    await prisma.chatMessageReaction.delete({ where: { id: existing.id } });
+    return { added: false };
+  }
+  await prisma.chatMessageReaction.create({
+    data: { messageId, userId, emoji },
+  });
+  return { added: true };
 }
 
 export async function sendMessage(

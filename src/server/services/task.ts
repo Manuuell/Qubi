@@ -15,7 +15,7 @@ import {
   assertWorkspaceMember,
   assertWorkspaceAdmin,
 } from "@/server/lib/permissions";
-import { MAX_ASSIGNEES } from "@/features/task/labels";
+import { MAX_ASSIGNEES, QUICK_REACTIONS } from "@/features/task/labels";
 
 // Las "tareas" son filas del modelo Issue ligadas a un proyecto (projectId).
 // Una tarea admite hasta 3 personas asignadas (tabla puente IssueAssignee);
@@ -415,7 +415,10 @@ export async function getTaskDetail(
       },
       comments: {
         orderBy: { createdAt: "asc" },
-        include: { author: { select: personSelect } },
+        include: {
+          author: { select: personSelect },
+          reactions: { include: { user: { select: personSelect } } },
+        },
       },
       timeEntries: { select: { minutes: true, userId: true, date: true } },
     },
@@ -494,6 +497,36 @@ export async function addTaskComment(
   }
 
   return comment;
+}
+
+// Alterna una reacción del usuario a un comentario: si ya la puso, la quita;
+// si no, la agrega. Un mismo usuario puede tener varias reacciones distintas
+// en el mismo comentario, pero no repetir el mismo emoji.
+export async function toggleCommentReaction(
+  commentId: string,
+  userId: string,
+  emoji: string,
+) {
+  if (!(QUICK_REACTIONS as readonly string[]).includes(emoji)) {
+    throw new Error("Reacción no válida");
+  }
+  const comment = await prisma.issueComment.findUnique({
+    where: { id: commentId },
+    select: { issueId: true },
+  });
+  if (!comment) throw new Error("Comentario no encontrado");
+  await assertTaskAccess(comment.issueId, userId);
+
+  const existing = await prisma.issueCommentReaction.findUnique({
+    where: { commentId_userId_emoji: { commentId, userId, emoji } },
+  });
+  if (existing) {
+    await prisma.issueCommentReaction.delete({ where: { id: existing.id } });
+  } else {
+    await prisma.issueCommentReaction.create({
+      data: { commentId, userId, emoji },
+    });
+  }
 }
 
 export async function addTaskAttachment(

@@ -86,3 +86,8 @@ export function toDateInputValue(d: Date | string | null) {
   const day = String(dt.getDate()).padStart(2, "0");
   return `${dt.getFullYear()}-${m}-${day}`;
 }
+
+// Set fijo de reacciones rápidas (comentarios de tarea y chat). Lista cerrada
+// a propósito: valida también en el servidor para no aceptar cualquier texto.
+export const QUICK_REACTIONS = ["👍", "❤️", "🎉", "👀", "✅"] as const;
+export type QuickReaction = (typeof QUICK_REACTIONS)[number];

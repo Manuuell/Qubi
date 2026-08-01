@@ -59,3 +59,11 @@ export async function markConversationReadAction(input: {
   await chat.markConversationRead(input.conversationId, user.id);
   revalidatePath(`/w/${input.workspaceId}/chat`, "layout");
 }
+
+export async function toggleMessageReactionAction(input: {
+  messageId: string;
+  emoji: string;
+}) {
+  const user = await getCurrentUser();
+  return chat.toggleMessageReaction(input.messageId, user.id, input.emoji);
+}

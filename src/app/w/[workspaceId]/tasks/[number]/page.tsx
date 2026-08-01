@@ -26,6 +26,7 @@ import { TaskPrioritySelect } from "@/features/task/components/task-priority-sel
 import { TaskStartDateInput } from "@/features/task/components/task-start-date-input";
 import { TaskDueDateInput } from "@/features/task/components/task-due-date-input";
 import { TaskAttachments } from "@/features/task/components/task-attachments";
+import { CommentReactions } from "@/features/task/components/comment-reactions";
 import { StartTaskButton } from "@/features/task/components/start-task-button";
 import { DeleteTaskButton } from "@/features/task/components/delete-task-button";
 import {
@@ -58,6 +59,10 @@ type CommentRow = {
     email: string;
     image: string | null;
   } | null;
+  reactions: {
+    emoji: string;
+    user: { id: string; name: string | null; email: string };
+  }[];
 };
 
 function NoteCard({
@@ -108,6 +113,11 @@ function NoteCard({
           className="mt-1 max-h-64 w-auto rounded-xl border object-contain"
         />
       )}
+      <CommentReactions
+        commentId={comment.id}
+        reactions={comment.reactions}
+        currentUserId={currentUserId}
+      />
     </Card>
   );
 }

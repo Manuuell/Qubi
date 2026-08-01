@@ -8,13 +8,14 @@ import {
   type FormEvent,
 } from "react";
 import Link from "next/link";
-import { Hash, Paperclip, Send } from "lucide-react";
+import { Hash, Paperclip, Send, SmilePlus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { initials } from "@/features/task/labels";
+import { initials, QUICK_REACTIONS } from "@/features/task/labels";
 import { cn } from "@/lib/utils";
 import {
   sendChatMessageAction,
   markConversationReadAction,
+  toggleMessageReactionAction,
 } from "@/server/actions/chat";
 import {
   CHAT_EVENT,
@@ -33,6 +34,10 @@ export type ChatMessageData = {
     email: string;
     image: string | null;
   } | null;
+  reactions: {
+    emoji: string;
+    user: { id: string; name: string | null; email: string };
+  }[];
 };
 
 const timeFmt = new Intl.DateTimeFormat("es-ES", {
@@ -159,6 +164,35 @@ export function ChatThread({
     }
   }
 
+  const [openPickerId, setOpenPickerId] = useState<string | null>(null);
+
+  function toggleReaction(messageId: string, emoji: string) {
+    setOpenPickerId(null);
+    // Optimista: no esperamos la respuesta del servidor para reflejarlo.
+    setMessages((cur) =>
+      cur.map((m) => {
+        if (m.id !== messageId) return m;
+        const already = m.reactions.some(
+          (r) => r.emoji === emoji && r.user.id === currentUserId,
+        );
+        return {
+          ...m,
+          reactions: already
+            ? m.reactions.filter(
+                (r) => !(r.emoji === emoji && r.user.id === currentUserId),
+              )
+            : [
+                ...m.reactions,
+                { emoji, user: { id: currentUserId, name: null, email: "" } },
+              ],
+        };
+      }),
+    );
+    toggleMessageReactionAction({ messageId, emoji }).catch(() => {
+      checkForNewMessages();
+    });
+  }
+
   const label =
     kind === "GROUP"
       ? title
@@ -209,37 +243,89 @@ export function ChatThread({
         ) : (
           messages.map((m) => {
             const mine = m.senderId === currentUserId;
+            const reactionGroups = new Map<string, number>();
+            for (const r of m.reactions) {
+              reactionGroups.set(
+                r.emoji,
+                (reactionGroups.get(r.emoji) ?? 0) + 1,
+              );
+            }
             return (
               <div
                 key={m.id}
-                className={cn("flex", mine ? "justify-end" : "justify-start")}
+                className={cn(
+                  "group flex flex-col",
+                  mine ? "items-end" : "items-start",
+                )}
               >
-                <div
-                  className={cn(
-                    "max-w-[75%] rounded-2xl px-3.5 py-2 text-sm",
-                    mine
-                      ? "bg-primary text-primary-foreground rounded-br-md"
-                      : "bg-muted rounded-bl-md",
-                  )}
-                >
-                  {kind === "GROUP" && !mine && m.sender && (
-                    <p className="mb-0.5 text-xs font-medium opacity-80">
-                      {m.sender.name?.trim() || m.sender.email}
-                    </p>
-                  )}
-                  {m.body && <p className="whitespace-pre-wrap">{m.body}</p>}
-                  {m.attachmentUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={m.attachmentUrl}
-                      alt="Adjunto"
-                      className="mt-1 max-h-56 w-auto rounded-xl object-contain"
+                <div className="flex items-end gap-1">
+                  {!mine && (
+                    <ReactionPicker
+                      open={openPickerId === m.id}
+                      onOpenChange={(o) => setOpenPickerId(o ? m.id : null)}
+                      onPick={(emoji) => toggleReaction(m.id, emoji)}
                     />
                   )}
-                  <p className={cn("mt-0.5 text-right text-[10px] opacity-70")}>
-                    {timeFmt.format(new Date(m.createdAt))}
-                  </p>
+                  <div
+                    className={cn(
+                      "max-w-[75%] rounded-2xl px-3.5 py-2 text-sm",
+                      mine
+                        ? "bg-primary text-primary-foreground rounded-br-md"
+                        : "bg-muted rounded-bl-md",
+                    )}
+                  >
+                    {kind === "GROUP" && !mine && m.sender && (
+                      <p className="mb-0.5 text-xs font-medium opacity-80">
+                        {m.sender.name?.trim() || m.sender.email}
+                      </p>
+                    )}
+                    {m.body && <p className="whitespace-pre-wrap">{m.body}</p>}
+                    {m.attachmentUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={m.attachmentUrl}
+                        alt="Adjunto"
+                        className="mt-1 max-h-56 w-auto rounded-xl object-contain"
+                      />
+                    )}
+                    <p
+                      className={cn("mt-0.5 text-right text-[10px] opacity-70")}
+                    >
+                      {timeFmt.format(new Date(m.createdAt))}
+                    </p>
+                  </div>
+                  {mine && (
+                    <ReactionPicker
+                      open={openPickerId === m.id}
+                      onOpenChange={(o) => setOpenPickerId(o ? m.id : null)}
+                      onPick={(emoji) => toggleReaction(m.id, emoji)}
+                    />
+                  )}
                 </div>
+                {reactionGroups.size > 0 && (
+                  <div className="mt-0.5 flex flex-wrap gap-1">
+                    {[...reactionGroups.entries()].map(([emoji, count]) => {
+                      const mineReacted = m.reactions.some(
+                        (r) => r.emoji === emoji && r.user.id === currentUserId,
+                      );
+                      return (
+                        <button
+                          key={emoji}
+                          onClick={() => toggleReaction(m.id, emoji)}
+                          className={cn(
+                            "transition-ios flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px]",
+                            mineReacted
+                              ? "border-primary/40 bg-primary/10 text-primary"
+                              : "hover:bg-accent",
+                          )}
+                        >
+                          <span>{emoji}</span>
+                          <span>{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })
@@ -274,6 +360,47 @@ export function ChatThread({
           <Send className="size-4" />
         </button>
       </form>
+    </div>
+  );
+}
+
+function ReactionPicker({
+  open,
+  onOpenChange,
+  onPick,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onPick: (emoji: string) => void;
+}) {
+  return (
+    <div className="relative shrink-0">
+      <button
+        onClick={() => onOpenChange(!open)}
+        aria-label="Agregar reacción"
+        className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios grid size-6 place-items-center rounded-full opacity-0 group-hover:opacity-100"
+      >
+        <SmilePlus className="size-3.5" />
+      </button>
+      {open && (
+        <>
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => onOpenChange(false)}
+          />
+          <div className="glass-strong animate-in fade-in-0 zoom-in-95 absolute bottom-full z-20 mb-1 flex gap-0.5 rounded-full p-1 duration-100">
+            {QUICK_REACTIONS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => onPick(emoji)}
+                className="hover:bg-accent transition-ios grid size-7 place-items-center rounded-full text-sm"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

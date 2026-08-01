@@ -299,3 +299,17 @@ export async function deleteTaskAction(input: {
   await taskService.deleteTask(input.taskId, user.id);
   revalidateProject(input.workspaceId, input.projectId);
 }
+
+// No revalida ruta: el propio componente cliente refresca con router.refresh()
+// tras llamar a esta acción (no tenemos a mano el número de tarea aquí).
+export async function toggleCommentReactionAction(input: {
+  commentId: string;
+  emoji: string;
+}) {
+  const user = await getCurrentUser();
+  await taskService.toggleCommentReaction(
+    input.commentId,
+    user.id,
+    input.emoji,
+  );
+}
