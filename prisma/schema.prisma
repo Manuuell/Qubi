@@ -184,6 +184,7 @@ model Project {
   runningTimers RunningTimer[]
   workSessions  WorkSession[]
   databases     ProjectDatabase[] // bases de datos de archivos vinculadas (pueden compartirse entre proyectos)
+  conversation  Conversation? // canal de chat grupal del proyecto
 
   @@index([workspaceId])
 }
@@ -573,17 +574,28 @@ model PropertyValue {
 }
 
 // ── Chat entre usuarios ──────────────────────────────────────────────────
-// Conversación 1 a 1 dentro de un workspace. El par de participantes es
-// único (se busca/crea en el servicio antes de insertar).
+// DIRECT: 1 a 1, el par de participantes es único (se busca/crea en el
+// servicio antes de insertar). GROUP: un canal por proyecto (projectId
+// único), donde participan quienes lo visitan (se unen al entrar).
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
 model Conversation {
-  id          String   @id @default(cuid())
+  id          String           @id @default(cuid())
   workspaceId String
-  createdAt   DateTime @default(now())
+  type        ConversationType @default(DIRECT)
+  name        String? // solo GROUP: nombre del canal (ej. nombre del proyecto)
+  projectId   String? // solo GROUP: proyecto al que pertenece el canal
+  createdAt   DateTime         @default(now())
 
   workspace    Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project      Project?                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   participants ConversationParticipant[]
   messages     ChatMessage[]
 
+  @@unique([projectId])
   @@index([workspaceId])
 }
 

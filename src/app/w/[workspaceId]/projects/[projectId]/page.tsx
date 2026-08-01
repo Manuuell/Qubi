@@ -7,6 +7,7 @@ import {
   GanttChartSquare,
   BarChart3,
   Database,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth";
@@ -102,6 +103,13 @@ export default async function ProjectPage({
             initialName={project.name}
           />
         </div>
+        <Link
+          href={`/w/${workspaceId}/chat/project/${project.id}`}
+          className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm"
+        >
+          <MessageCircle className="size-4" />
+          Chat del proyecto
+        </Link>
         <ArchiveProjectButton
           projectId={project.id}
           workspaceId={workspaceId}

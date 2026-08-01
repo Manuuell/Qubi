@@ -26,7 +26,10 @@ export default async function ConversationPage({
       workspaceId={workspaceId}
       conversationId={conversationId}
       currentUserId={user.id}
+      kind={conversation.kind}
+      title={conversation.title}
       otherUser={conversation.otherUser}
+      memberCount={conversation.members.length}
       initialMessages={messages}
     />
   );

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { assertWorkspaceMember } from "@/server/lib/permissions";
+import { getProject } from "@/server/services/project";
 
 const personSelect = {
   id: true,
@@ -23,6 +24,7 @@ export async function getOrCreateDirectConversation(
   const candidates = await prisma.conversation.findMany({
     where: {
       workspaceId,
+      type: "DIRECT",
       participants: { some: { userId } },
       AND: { participants: { some: { userId: otherUserId } } },
     },
@@ -34,19 +36,56 @@ export async function getOrCreateDirectConversation(
   return prisma.conversation.create({
     data: {
       workspaceId,
+      type: "DIRECT",
       participants: { create: [{ userId }, { userId: otherUserId }] },
     },
   });
 }
 
+// Canal grupal del proyecto: uno solo por proyecto (projectId es único). Se
+// crea la primera vez que alguien entra, y cada visitante se une como
+// participante en ese momento (canal abierto a todo el proyecto, no exige
+// invitación explícita).
+export async function getOrCreateProjectConversation(
+  projectId: string,
+  userId: string,
+) {
+  const project = await getProject(projectId, userId);
+  if (!project) throw new Error("Proyecto no encontrado");
+
+  const conversation = await prisma.conversation.upsert({
+    where: { projectId },
+    create: {
+      workspaceId: project.workspaceId,
+      type: "GROUP",
+      name: project.name,
+      projectId,
+      participants: { create: [{ userId }] },
+    },
+    update: {},
+  });
+
+  await prisma.conversationParticipant.upsert({
+    where: {
+      conversationId_userId: { conversationId: conversation.id, userId },
+    },
+    create: { conversationId: conversation.id, userId },
+    update: {},
+  });
+
+  return conversation;
+}
+
 export type ConversationListItem = {
   id: string;
+  kind: "DIRECT" | "GROUP";
+  title: string;
   otherUser: {
     id: string;
     name: string | null;
     email: string;
     image: string | null;
-  };
+  } | null;
   lastMessage: {
     body: string;
     createdAt: Date;
@@ -73,7 +112,8 @@ export async function listConversations(
     conversations.map(async (c) => {
       const me = c.participants.find((p) => p.userId === userId);
       const other = c.participants.find((p) => p.userId !== userId);
-      if (!other) return null;
+      if (c.type === "DIRECT" && !other) return null;
+
       const unreadCount = await prisma.chatMessage.count({
         where: {
           conversationId: c.id,
@@ -83,7 +123,9 @@ export async function listConversations(
       });
       return {
         id: c.id,
-        otherUser: other.user,
+        kind: c.type,
+        title: c.type === "GROUP" ? (c.name ?? "Canal del proyecto") : "",
+        otherUser: c.type === "DIRECT" ? (other?.user ?? null) : null,
         lastMessage: c.messages[0]
           ? {
               body: c.messages[0].body,
@@ -136,13 +178,28 @@ export async function getConversation(conversationId: string, userId: string) {
   await assertParticipant(conversationId, userId);
   const conversation = await prisma.conversation.findUniqueOrThrow({
     where: { id: conversationId },
-    include: { participants: { include: { user: { select: personSelect } } } },
+    include: {
+      participants: { include: { user: { select: personSelect } } },
+      project: { select: { id: true, name: true } },
+    },
   });
   const other = conversation.participants.find((p) => p.userId !== userId);
   return {
     id: conversation.id,
     workspaceId: conversation.workspaceId,
-    otherUser: other?.user ?? null,
+    kind: conversation.type,
+    title:
+      conversation.type === "GROUP"
+        ? (conversation.name ??
+          conversation.project?.name ??
+          "Canal del proyecto")
+        : "",
+    project: conversation.project,
+    otherUser: conversation.type === "DIRECT" ? (other?.user ?? null) : null,
+    members:
+      conversation.type === "GROUP"
+        ? conversation.participants.map((p) => p.user)
+        : [],
   };
 }
 

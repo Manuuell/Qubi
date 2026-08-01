@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Paperclip, Send } from "lucide-react";
+import { Hash, Paperclip, Send } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/features/task/labels";
 import { cn } from "@/lib/utils";
@@ -40,18 +40,24 @@ export function ChatThread({
   workspaceId,
   conversationId,
   currentUserId,
+  kind,
+  title,
   otherUser,
+  memberCount,
   initialMessages,
 }: {
   workspaceId: string;
   conversationId: string;
   currentUserId: string;
+  kind: "DIRECT" | "GROUP";
+  title: string;
   otherUser: {
     id: string;
     name: string | null;
     email: string;
     image: string | null;
   } | null;
+  memberCount: number;
   initialMessages: ChatMessageData[];
 }) {
   const [messages, setMessages] = useState(initialMessages);
@@ -126,24 +132,42 @@ export function ChatThread({
     }
   }
 
-  const label = otherUser?.name?.trim() || otherUser?.email || "Conversación";
+  const label =
+    kind === "GROUP"
+      ? title
+      : otherUser?.name?.trim() || otherUser?.email || "Conversación";
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-border/60 flex shrink-0 items-center gap-2.5 border-b px-5 py-3.5">
-        {otherUser && (
-          <Link
-            href={`/w/${workspaceId}/members/${otherUser.id}`}
-            className="flex items-center gap-2.5 hover:underline"
-          >
-            <Avatar size="sm">
-              <AvatarImage src={otherUser.image ?? undefined} alt="" />
-              <AvatarFallback>
-                {initials(otherUser.name, otherUser.email)}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-sm font-medium">{label}</span>
-          </Link>
+        {kind === "GROUP" ? (
+          <div className="flex items-center gap-2.5">
+            <span className="bg-primary/10 text-primary grid size-8 shrink-0 place-items-center rounded-full">
+              <Hash className="size-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-medium">{label}</span>
+              <span className="text-muted-foreground block text-xs">
+                {memberCount}{" "}
+                {memberCount === 1 ? "participante" : "participantes"}
+              </span>
+            </span>
+          </div>
+        ) : (
+          otherUser && (
+            <Link
+              href={`/w/${workspaceId}/members/${otherUser.id}`}
+              className="flex items-center gap-2.5 hover:underline"
+            >
+              <Avatar size="sm">
+                <AvatarImage src={otherUser.image ?? undefined} alt="" />
+                <AvatarFallback>
+                  {initials(otherUser.name, otherUser.email)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium">{label}</span>
+            </Link>
+          )
         )}
       </div>
 
@@ -171,6 +195,11 @@ export function ChatThread({
                       : "bg-muted rounded-bl-md",
                   )}
                 >
+                  {kind === "GROUP" && !mine && m.sender && (
+                    <p className="mb-0.5 text-xs font-medium opacity-80">
+                      {m.sender.name?.trim() || m.sender.email}
+                    </p>
+                  )}
                   {m.body && <p className="whitespace-pre-wrap">{m.body}</p>}
                   {m.attachmentUrl && (
                     // eslint-disable-next-line @next/next/no-img-element

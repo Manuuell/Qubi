@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageCircle } from "lucide-react";
+import { Hash, MessageCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/features/task/labels";
 import { cn } from "@/lib/utils";
@@ -46,7 +46,10 @@ export function ChatShell({
             conversations.map((c) => {
               const href = `/w/${workspaceId}/chat/${c.id}`;
               const active = pathname === href;
-              const label = c.otherUser.name?.trim() || c.otherUser.email;
+              const label =
+                c.kind === "GROUP"
+                  ? c.title
+                  : (c.otherUser?.name?.trim() ?? c.otherUser?.email ?? "");
               return (
                 <Link
                   key={c.id}
@@ -56,12 +59,24 @@ export function ChatShell({
                     active && "bg-accent",
                   )}
                 >
-                  <Avatar size="sm" className="shrink-0">
-                    <AvatarImage src={c.otherUser.image ?? undefined} alt="" />
-                    <AvatarFallback>
-                      {initials(c.otherUser.name, c.otherUser.email)}
-                    </AvatarFallback>
-                  </Avatar>
+                  {c.kind === "GROUP" ? (
+                    <span className="bg-primary/10 text-primary grid size-8 shrink-0 place-items-center rounded-full">
+                      <Hash className="size-4" />
+                    </span>
+                  ) : (
+                    <Avatar size="sm" className="shrink-0">
+                      <AvatarImage
+                        src={c.otherUser?.image ?? undefined}
+                        alt=""
+                      />
+                      <AvatarFallback>
+                        {initials(
+                          c.otherUser?.name ?? null,
+                          c.otherUser?.email ?? "",
+                        )}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center justify-between gap-2">
                       <span className="truncate text-sm font-medium">
