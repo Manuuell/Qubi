@@ -238,6 +238,20 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   background-color: var(--muted-foreground);
 }
 
+/* Flotación suave del ícono en los estados vacíos del chat. */
+@keyframes chat-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.animate-chat-float {
+  animation: chat-float 2.6s ease-in-out infinite;
+}
+
 /* Patrón de tablero de ajedrez (acento de marca). */
 .chess-pattern {
   background-image:

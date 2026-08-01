@@ -80,6 +80,62 @@ export async function getOrCreateProjectConversation(
   return conversation;
 }
 
+// Grupo creado a mano (a diferencia del canal automático por proyecto):
+// nombre elegido y participantes seleccionados por quien lo crea.
+export async function createGroupConversation(
+  workspaceId: string,
+  creatorId: string,
+  memberIds: string[],
+  name: string,
+) {
+  await assertWorkspaceMember(workspaceId, creatorId);
+  const ids = [...new Set([creatorId, ...memberIds])];
+  for (const id of ids) await assertWorkspaceMember(workspaceId, id);
+  if (ids.length < 2) {
+    throw new Error("Elige al menos otra persona para el grupo.");
+  }
+
+  return prisma.conversation.create({
+    data: {
+      workspaceId,
+      type: "GROUP",
+      name: name.trim() || "Grupo",
+      participants: { create: ids.map((userId) => ({ userId })) },
+    },
+  });
+}
+
+export async function renameConversation(
+  conversationId: string,
+  userId: string,
+  name: string,
+) {
+  await assertParticipant(conversationId, userId);
+  const conversation = await prisma.conversation.findUniqueOrThrow({
+    where: { id: conversationId },
+  });
+  if (conversation.type !== "GROUP") {
+    throw new Error("Solo los grupos se pueden renombrar.");
+  }
+  return prisma.conversation.update({
+    where: { id: conversationId },
+    data: { name: name.trim() || conversation.name },
+  });
+}
+
+// Sale de la conversación (grupo) o la quita de la lista propia (chat 1 a
+// 1): borra solo la fila de participación del usuario, los mensajes quedan
+// intactos para el resto.
+export async function leaveConversation(
+  conversationId: string,
+  userId: string,
+) {
+  await assertParticipant(conversationId, userId);
+  await prisma.conversationParticipant.delete({
+    where: { conversationId_userId: { conversationId, userId } },
+  });
+}
+
 export type ConversationListItem = {
   id: string;
   kind: "DIRECT" | "GROUP";

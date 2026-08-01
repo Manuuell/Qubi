@@ -67,3 +67,39 @@ export async function toggleMessageReactionAction(input: {
   const user = await getCurrentUser();
   return chat.toggleMessageReaction(input.messageId, user.id, input.emoji);
 }
+
+export async function createGroupConversationAction(input: {
+  workspaceId: string;
+  memberIds: string[];
+  name: string;
+}) {
+  const user = await getCurrentUser();
+  const conversation = await chat.createGroupConversation(
+    input.workspaceId,
+    user.id,
+    input.memberIds,
+    input.name,
+  );
+  revalidatePath(`/w/${input.workspaceId}/chat`, "layout");
+  redirect(`/w/${input.workspaceId}/chat/${conversation.id}`);
+}
+
+export async function renameConversationAction(input: {
+  workspaceId: string;
+  conversationId: string;
+  name: string;
+}) {
+  const user = await getCurrentUser();
+  await chat.renameConversation(input.conversationId, user.id, input.name);
+  revalidatePath(`/w/${input.workspaceId}/chat`, "layout");
+}
+
+export async function leaveConversationAction(input: {
+  workspaceId: string;
+  conversationId: string;
+}) {
+  const user = await getCurrentUser();
+  await chat.leaveConversation(input.conversationId, user.id);
+  revalidatePath(`/w/${input.workspaceId}/chat`, "layout");
+  redirect(`/w/${input.workspaceId}/chat`);
+}

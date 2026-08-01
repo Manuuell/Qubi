@@ -5,17 +5,38 @@ import {
   useEffect,
   useRef,
   useState,
+  useTransition,
   type FormEvent,
 } from "react";
 import Link from "next/link";
-import { Hash, Paperclip, Send, SmilePlus } from "lucide-react";
+import {
+  ArrowLeft,
+  File as FileIcon,
+  Hash,
+  LogOut,
+  MoreHorizontal,
+  Paperclip,
+  Pencil,
+  Send,
+  SmilePlus,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials, QUICK_REACTIONS } from "@/features/task/labels";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PromptDialog } from "@/components/ui/prompt-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import {
   sendChatMessageAction,
   markConversationReadAction,
   toggleMessageReactionAction,
+  renameConversationAction,
+  leaveConversationAction,
 } from "@/server/actions/chat";
 import {
   CHAT_EVENT,
@@ -88,6 +109,9 @@ export function ChatThread({
   const [body, setBody] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [leavePending, startLeaveTransition] = useTransition();
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef(messages);
   useEffect(() => {
@@ -230,6 +254,13 @@ export function ChatThread({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-border/60 flex shrink-0 items-center gap-2.5 border-b px-5 py-3.5">
+        <Link
+          href={`/w/${workspaceId}/chat`}
+          aria-label="Volver a los chats"
+          className="text-muted-foreground hover:bg-accent transition-ios -ml-1.5 grid size-8 shrink-0 place-items-center rounded-full md:hidden"
+        >
+          <ArrowLeft className="size-4" />
+        </Link>
         {kind === "GROUP" ? (
           <div className="flex items-center gap-2.5">
             <span className="bg-primary/10 text-primary grid size-8 shrink-0 place-items-center rounded-full">
@@ -259,7 +290,67 @@ export function ChatThread({
             </Link>
           )
         )}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label="Más opciones"
+            className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios ml-auto grid size-8 shrink-0 place-items-center rounded-full"
+          >
+            <MoreHorizontal className="size-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {kind === "GROUP" && (
+              <DropdownMenuItem onClick={() => setRenaming(true)}>
+                <Pencil className="size-4" />
+                Renombrar grupo
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => setLeaving(true)}
+            >
+              <LogOut className="size-4" />
+              {kind === "GROUP" ? "Salir del grupo" : "Eliminar conversación"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+
+      <PromptDialog
+        open={renaming}
+        onOpenChange={setRenaming}
+        title="Renombrar grupo"
+        initialValue={title}
+        confirmLabel="Guardar"
+        pending={leavePending}
+        onConfirm={(name) => {
+          startLeaveTransition(() =>
+            renameConversationAction({ workspaceId, conversationId, name }),
+          );
+          setRenaming(false);
+        }}
+      />
+      <ConfirmDialog
+        open={leaving}
+        onOpenChange={setLeaving}
+        title={
+          kind === "GROUP"
+            ? "¿Salir de este grupo?"
+            : "¿Eliminar esta conversación?"
+        }
+        description={
+          kind === "GROUP"
+            ? "Dejarás de ver este grupo y sus mensajes nuevos."
+            : "Se quitará de tu lista. La otra persona seguirá viendo los mensajes."
+        }
+        confirmLabel={kind === "GROUP" ? "Salir" : "Eliminar"}
+        pending={leavePending}
+        onConfirm={() =>
+          startLeaveTransition(() =>
+            leaveConversationAction({ workspaceId, conversationId }),
+          )
+        }
+      />
 
       <div
         ref={scrollRef}
@@ -314,12 +405,7 @@ export function ChatThread({
                       </p>
                     )}
                     {m.attachmentUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={m.attachmentUrl}
-                        alt="Adjunto"
-                        className="mt-1 max-h-56 w-auto rounded-xl object-contain"
-                      />
+                      <ChatAttachment url={m.attachmentUrl} />
                     )}
                     <p
                       className={cn("mt-0.5 text-right text-[10px] opacity-70")}
@@ -405,6 +491,33 @@ export function ChatThread({
         </button>
       </form>
     </div>
+  );
+}
+
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg|avif)(\?|$)/i;
+
+function ChatAttachment({ url }: { url: string }) {
+  if (IMAGE_EXT.test(url)) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt="Adjunto"
+        className="mt-1 max-h-56 w-auto rounded-xl object-contain"
+      />
+    );
+  }
+  const filename = decodeURIComponent(url.split("/").pop() || "Archivo");
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="bg-background/50 hover:bg-background/70 transition-ios mt-1 flex items-center gap-2 rounded-xl px-3 py-2 text-xs"
+    >
+      <FileIcon className="size-4 shrink-0" />
+      <span className="min-w-0 truncate">{filename}</span>
+    </a>
   );
 }
 
