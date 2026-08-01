@@ -217,6 +217,27 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   display: none;
 }
 
+/* Barra de scroll fina y discreta para áreas anchas de desplazamiento
+   horizontal (tablero Kanban): a diferencia de .no-scrollbar, sí se ve, para
+   que quede claro que hay más contenido a los lados. */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.thin-scrollbar::-webkit-scrollbar {
+  height: 8px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 999px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground);
+}
+
 /* Patrón de tablero de ajedrez (acento de marca). */
 .chess-pattern {
   background-image:
