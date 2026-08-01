@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { IssueStatus } from "@/generated/prisma/enums";
@@ -7,6 +9,7 @@ import {
   STATUS_LABEL,
   formatDueDate,
 } from "@/features/task/labels";
+import { TASK_DRAG_MIME } from "./task-card";
 
 const DAY_W = 30; // ancho de cada día (px)
 const ROW_H = 36; // alto de cada fila (px)
@@ -166,7 +169,12 @@ export function TaskGantt({
               >
                 <Link
                   href={`/w/${workspaceId}/tasks/${task.number}`}
-                  className="bg-card hover:bg-accent border-border/60 transition-ios sticky left-0 z-10 flex shrink-0 items-center gap-1.5 border-r px-3 text-sm"
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(TASK_DRAG_MIME, task.id);
+                    e.dataTransfer.effectAllowed = "copy";
+                  }}
+                  className="bg-card hover:bg-accent border-border/60 transition-ios sticky left-0 z-10 flex shrink-0 cursor-grab items-center gap-1.5 border-r px-3 text-sm active:cursor-grabbing"
                   style={{ width: LEFT_W }}
                 >
                   <span

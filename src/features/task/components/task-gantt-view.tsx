@@ -11,6 +11,7 @@ import {
 } from "@/features/task/labels";
 import type { MemberOption } from "./task-assignee-select";
 import { TaskGantt } from "./task-gantt";
+import { TaskTeamStrip } from "./task-team-strip";
 import {
   Select,
   SelectContent,
@@ -25,10 +26,12 @@ export function TaskGanttView({
   tasks,
   members,
   workspaceId,
+  projectId,
 }: {
   tasks: TaskCardData[];
   members: MemberOption[];
   workspaceId: string;
+  projectId: string;
 }) {
   const [assignee, setAssignee] = useState("all"); // all | none | <memberId>
   const [status, setStatus] = useState("all");
@@ -63,6 +66,11 @@ export function TaskGanttView({
 
   return (
     <div>
+      <TaskTeamStrip
+        workspaceId={workspaceId}
+        projectId={projectId}
+        members={members}
+      />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Select value={assignee} onValueChange={(v) => v && setAssignee(v)}>
           <SelectTrigger

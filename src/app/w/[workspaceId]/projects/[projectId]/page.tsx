@@ -169,6 +169,7 @@ export default async function ProjectPage({
             tasks={tasks}
             members={memberOptions}
             workspaceId={workspaceId}
+            projectId={projectId}
           />
         )}
         {view === "databases" && (
