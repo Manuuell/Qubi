@@ -132,134 +132,121 @@ export function Sidebar({
           <WorkspaceSwitcher current={workspace} workspaces={workspaces} />
         </div>
 
-        <div className="mt-1 space-y-0.5 px-1">
-          <div data-tour="tour-search">
-            <CommandPalette />
-          </div>
-          <Link
-            href={`/w/${workspace.id}`}
-            data-tour="tour-home"
-            onClick={() => setOpen(false)}
-            className={cn(
-              "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
-              pathname === `/w/${workspace.id}` && "bg-primary/10 text-primary",
-            )}
-          >
-            <Home className="size-4" />
-            Inicio
-          </Link>
-          <Link
-            href={`/w/${workspace.id}/agenda`}
-            data-tour="tour-agenda"
-            onClick={() => setOpen(false)}
-            className={cn(
-              "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
-              pathname === `/w/${workspace.id}/agenda` &&
-                "bg-primary/10 text-primary",
-            )}
-          >
-            <CalendarCheck className="size-4" />
-            Mi agenda
-          </Link>
-          <div data-tour="tour-create" className="space-y-0.5">
-            <CreateProjectButton workspaceId={workspace.id} />
-            <NewPageButton workspaceId={workspace.id} />
-            <button
-              onClick={() =>
-                startTransition(() =>
-                  createDatabaseAction({ workspaceId: workspace.id }),
-                )
-              }
-              disabled={pending}
-              className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex w-full items-center gap-2 rounded-full px-3 py-1.5 text-sm disabled:opacity-50"
-            >
-              <Table className="size-4" />
-              Nueva base de datos
-            </button>
-          </div>
-        </div>
-
-        <nav className="mt-1 flex-1 space-y-0.5 overflow-y-auto px-1 pb-4">
-          <div data-tour="tour-projects" className="mt-3 mb-3">
-            <p className="text-muted-foreground px-3 py-1 text-[11px] font-medium tracking-wide uppercase">
-              Proyectos
-            </p>
-            {projects.length === 0 ? (
-              <p className="text-muted-foreground px-3 py-2 text-xs">
-                Sin proyectos todavía.
-              </p>
-            ) : (
-              projects.map((p) => {
-                const href = `/w/${workspace.id}/projects/${p.id}`;
-                const active = pathname === href;
-                return (
-                  <Link
-                    key={p.id}
-                    href={href}
-                    onClick={() => setOpen(false)}
-                    className={cn(
-                      "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
-                      active && "bg-primary/10 text-primary",
-                    )}
-                  >
-                    <span
-                      className="size-2.5 shrink-0 rounded-full"
-                      style={{ background: p.color ?? "#888888" }}
-                    />
-                    <span className="truncate">{p.name || "Sin nombre"}</span>
-                  </Link>
-                );
-              })
-            )}
-          </div>
-
-          {favorites.length > 0 && (
-            <div className="mb-3">
-              <p className="text-muted-foreground px-3 py-1 text-[11px] font-medium tracking-wide uppercase">
-                Favoritos
-              </p>
-              {favorites.map((f) => (
-                <Link
-                  key={f.id}
-                  href={`/w/${workspace.id}/${f.id}`}
-                  onClick={() => setOpen(false)}
-                  className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm"
-                >
-                  <Star className="text-gold size-3.5 shrink-0 fill-current" />
-                  <span className="truncate">{f.title || "Sin título"}</span>
-                </Link>
-              ))}
+        {/* Todo el centro del menú va en UNA zona desplazable. Antes el árbol
+            de proyectos era el único que scrolleaba y quedaba aplastado entre
+            bloques fijos: en pantallas bajas se reducía a unos pocos píxeles y
+            los proyectos parecían no existir. */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="mt-1 space-y-0.5 px-1">
+            <div data-tour="tour-search">
+              <CommandPalette />
             </div>
-          )}
+            <Link
+              href={`/w/${workspace.id}`}
+              data-tour="tour-home"
+              onClick={() => setOpen(false)}
+              className={cn(
+                "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
+                pathname === `/w/${workspace.id}` &&
+                  "bg-primary/10 text-primary",
+              )}
+            >
+              <Home className="size-4" />
+              Inicio
+            </Link>
+            <Link
+              href={`/w/${workspace.id}/agenda`}
+              data-tour="tour-agenda"
+              onClick={() => setOpen(false)}
+              className={cn(
+                "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
+                pathname === `/w/${workspace.id}/agenda` &&
+                  "bg-primary/10 text-primary",
+              )}
+            >
+              <CalendarCheck className="size-4" />
+              Mi agenda
+            </Link>
+            <div data-tour="tour-create" className="space-y-0.5">
+              <CreateProjectButton workspaceId={workspace.id} />
+              <NewPageButton workspaceId={workspace.id} />
+              <button
+                onClick={() =>
+                  startTransition(() =>
+                    createDatabaseAction({ workspaceId: workspace.id }),
+                  )
+                }
+                disabled={pending}
+                className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex w-full items-center gap-2 rounded-full px-3 py-1.5 text-sm disabled:opacity-50"
+              >
+                <Table className="size-4" />
+                Nueva base de datos
+              </button>
+            </div>
+          </div>
 
-          <p className="text-muted-foreground px-3 py-1 text-[11px] font-medium tracking-wide uppercase">
-            Páginas
-          </p>
-          {pageTree.length === 0 ? (
-            <p className="text-muted-foreground px-3 py-4 text-xs">
-              Sin páginas todavía.
-            </p>
-          ) : (
-            pageTree.map((node) => (
-              <PageRow
-                key={node.id}
-                node={node}
-                workspaceId={workspace.id}
-                depth={0}
-              />
-            ))
-          )}
+          <nav className="mt-1 space-y-0.5 px-1 pb-2">
+            <div data-tour="tour-projects" className="mt-3 mb-3">
+              <p className="text-muted-foreground px-3 py-1 text-[11px] font-medium tracking-wide uppercase">
+                Proyectos
+              </p>
+              {projects.length === 0 ? (
+                <p className="text-muted-foreground px-3 py-2 text-xs">
+                  Sin proyectos todavía.
+                </p>
+              ) : (
+                projects.map((p) => {
+                  const href = `/w/${workspace.id}/projects/${p.id}`;
+                  const active = pathname === href;
+                  return (
+                    <Link
+                      key={p.id}
+                      href={href}
+                      onClick={() => setOpen(false)}
+                      className={cn(
+                        "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
+                        active && "bg-primary/10 text-primary",
+                      )}
+                    >
+                      <span
+                        className="size-2.5 shrink-0 rounded-full"
+                        style={{ background: p.color ?? "#888888" }}
+                      />
+                      <span className="truncate">{p.name || "Sin nombre"}</span>
+                    </Link>
+                  );
+                })
+              )}
+            </div>
 
-          <div data-tour="tour-databases">
-            <p className="text-muted-foreground mt-3 px-3 py-1 text-[11px] font-medium tracking-wide uppercase">
-              Bases de datos
+            {favorites.length > 0 && (
+              <div className="mb-3">
+                <p className="text-muted-foreground px-3 py-1 text-[11px] font-medium tracking-wide uppercase">
+                  Favoritos
+                </p>
+                {favorites.map((f) => (
+                  <Link
+                    key={f.id}
+                    href={`/w/${workspace.id}/${f.id}`}
+                    onClick={() => setOpen(false)}
+                    className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm"
+                  >
+                    <Star className="text-gold size-3.5 shrink-0 fill-current" />
+                    <span className="truncate">{f.title || "Sin título"}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            <p className="text-muted-foreground px-3 py-1 text-[11px] font-medium tracking-wide uppercase">
+              Páginas
             </p>
-            {databaseTree.length === 0 ? (
+            {pageTree.length === 0 ? (
               <p className="text-muted-foreground px-3 py-4 text-xs">
-                Sin bases de datos todavía.
+                Sin páginas todavía.
               </p>
             ) : (
-              databaseTree.map((node) => (
+              pageTree.map((node) => (
                 <PageRow
                   key={node.id}
                   node={node}
@@ -268,116 +255,136 @@ export function Sidebar({
                 />
               ))
             )}
-          </div>
-        </nav>
 
-        <div className="border-border/60 mt-auto space-y-0.5 border-t p-1 pt-2 text-sm">
-          <Link
-            href={`/w/${workspace.id}/chat`}
-            data-tour="tour-chat"
-            onClick={() => setOpen(false)}
-            className={cn(
-              "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5",
-              pathname.startsWith(`/w/${workspace.id}/chat`) &&
-                "bg-primary/10 text-primary",
-            )}
-          >
-            <MessageCircle className="size-4" />
-            Chat
-            {chatUnreadCount > 0 && (
-              <span className="bg-destructive text-destructive-foreground ml-auto grid min-w-4.5 place-items-center rounded-full px-1 text-[10px] leading-4 font-medium">
-                {chatUnreadCount > 9 ? "9+" : chatUnreadCount}
-              </span>
-            )}
-          </Link>
-          <Link
-            href={`/w/${workspace.id}/hours`}
-            data-tour="tour-hours"
-            onClick={() => setOpen(false)}
-            className={cn(
-              "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5",
-              pathname === `/w/${workspace.id}/hours` &&
-                "bg-primary/10 text-primary",
-            )}
-          >
-            <Clock className="size-4" />
-            Registro de horas
-          </Link>
-          {/* Panel de equipo: solo OWNER/ADMIN. Hasta ahora únicamente se
-              llegaba desde el conmutador del inicio, así que no se encontraba. */}
-          {isManager && (
+            <div data-tour="tour-databases">
+              <p className="text-muted-foreground mt-3 px-3 py-1 text-[11px] font-medium tracking-wide uppercase">
+                Bases de datos
+              </p>
+              {databaseTree.length === 0 ? (
+                <p className="text-muted-foreground px-3 py-4 text-xs">
+                  Sin bases de datos todavía.
+                </p>
+              ) : (
+                databaseTree.map((node) => (
+                  <PageRow
+                    key={node.id}
+                    node={node}
+                    workspaceId={workspace.id}
+                    depth={0}
+                  />
+                ))
+              )}
+            </div>
+          </nav>
+
+          <div className="border-border/60 space-y-0.5 border-t p-1 pt-2 text-sm">
             <Link
-              href={`/w/${workspace.id}?view=team`}
+              href={`/w/${workspace.id}/chat`}
+              data-tour="tour-chat"
               onClick={() => setOpen(false)}
               className={cn(
                 "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5",
-                pathname === `/w/${workspace.id}` &&
-                  view === "team" &&
+                pathname.startsWith(`/w/${workspace.id}/chat`) &&
                   "bg-primary/10 text-primary",
               )}
             >
-              <BarChart3 className="size-4" />
-              Equipo
+              <MessageCircle className="size-4" />
+              Chat
+              {chatUnreadCount > 0 && (
+                <span className="bg-destructive text-destructive-foreground ml-auto grid min-w-4.5 place-items-center rounded-full px-1 text-[10px] leading-4 font-medium">
+                  {chatUnreadCount > 9 ? "9+" : chatUnreadCount}
+                </span>
+              )}
             </Link>
-          )}
-          <Link
-            href={`/w/${workspace.id}/members`}
-            data-tour="tour-members"
-            onClick={() => setOpen(false)}
-            className={cn(
-              "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5",
-              pathname === `/w/${workspace.id}/members` &&
-                "bg-primary/10 text-primary",
-            )}
-          >
-            <Users className="size-4" />
-            Miembros
-          </Link>
-          <Link
-            href={`/w/${workspace.id}/trash`}
-            data-tour="tour-trash"
-            onClick={() => setOpen(false)}
-            className={cn(
-              "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5",
-              pathname === `/w/${workspace.id}/trash` &&
-                "bg-primary/10 text-primary",
-            )}
-          >
-            <Trash2 className="size-4" />
-            Papelera
-          </Link>
-
-          <div
-            data-tour="tour-account"
-            className="border-border/60 mt-2 flex items-center gap-2 border-t px-1 pt-2"
-          >
-            <div className="min-w-0 flex-1 [&_span]:text-xs">
-              <UserPreview
-                onNavigate={() => setOpen(false)}
-                workspaceId={workspace.id}
-                userId={userId}
-                name={userName}
-                email={userEmail}
-                image={userImage}
-                currentUserId={userId}
-              />
-            </div>
-            <button
-              onClick={startTour}
-              aria-label="Ver guía de bienvenida"
-              data-tour="tour-help"
-              className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios grid size-7 shrink-0 place-items-center rounded-full"
+            <Link
+              href={`/w/${workspace.id}/hours`}
+              data-tour="tour-hours"
+              onClick={() => setOpen(false)}
+              className={cn(
+                "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5",
+                pathname === `/w/${workspace.id}/hours` &&
+                  "bg-primary/10 text-primary",
+              )}
             >
-              <HelpCircle className="size-4" />
-            </button>
-            <NotificationBell inbox={inbox} workspaceId={workspace.id} />
-            <ThemeToggle />
-            <AccountMenu
-              current={{ name: userName, email: userEmail }}
-              accounts={accounts}
+              <Clock className="size-4" />
+              Registro de horas
+            </Link>
+            {/* Panel de equipo: solo OWNER/ADMIN. Hasta ahora únicamente se
+              llegaba desde el conmutador del inicio, así que no se encontraba. */}
+            {isManager && (
+              <Link
+                href={`/w/${workspace.id}?view=team`}
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5",
+                  pathname === `/w/${workspace.id}` &&
+                    view === "team" &&
+                    "bg-primary/10 text-primary",
+                )}
+              >
+                <BarChart3 className="size-4" />
+                Equipo
+              </Link>
+            )}
+            <Link
+              href={`/w/${workspace.id}/members`}
+              data-tour="tour-members"
+              onClick={() => setOpen(false)}
+              className={cn(
+                "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5",
+                pathname === `/w/${workspace.id}/members` &&
+                  "bg-primary/10 text-primary",
+              )}
+            >
+              <Users className="size-4" />
+              Miembros
+            </Link>
+            <Link
+              href={`/w/${workspace.id}/trash`}
+              data-tour="tour-trash"
+              onClick={() => setOpen(false)}
+              className={cn(
+                "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5",
+                pathname === `/w/${workspace.id}/trash` &&
+                  "bg-primary/10 text-primary",
+              )}
+            >
+              <Trash2 className="size-4" />
+              Papelera
+            </Link>
+          </div>
+        </div>
+
+        <div
+          data-tour="tour-account"
+          className="border-border/60 mt-auto flex items-center gap-2 border-t px-2 pt-2"
+        >
+          <div className="min-w-0 flex-1 [&_span]:text-xs">
+            <UserPreview
               onNavigate={() => setOpen(false)}
+              workspaceId={workspace.id}
+              userId={userId}
+              name={userName}
+              email={userEmail}
+              image={userImage}
+              currentUserId={userId}
             />
           </div>
+          <button
+            onClick={startTour}
+            aria-label="Ver guía de bienvenida"
+            data-tour="tour-help"
+            className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios grid size-7 shrink-0 place-items-center rounded-full"
+          >
+            <HelpCircle className="size-4" />
+          </button>
+          <NotificationBell inbox={inbox} workspaceId={workspace.id} />
+          <ThemeToggle />
+          <AccountMenu
+            current={{ name: userName, email: userEmail }}
+            accounts={accounts}
+            onNavigate={() => setOpen(false)}
+          />
         </div>
       </aside>
     </>
