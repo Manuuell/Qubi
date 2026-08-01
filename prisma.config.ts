@@ -7,6 +7,9 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
+    // Para que `prisma migrate reset` deje la base con el espacio de demo y
+    // las cuentas de invitado sin tener que acordarse de correr el seed.
+    seed: "tsx prisma/seed.ts",
   },
   datasource: {
     url: process.env["DATABASE_URL"],

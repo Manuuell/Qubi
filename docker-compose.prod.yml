@@ -50,6 +50,25 @@ services:
         condition: service_healthy
     restart: "no"
 
+  # Cuentas de invitado + datos de demostración. NO corre solo: está detrás de
+  # un perfil, así que solo se ejecuta a mano cuando se quiere refrescar la
+  # demo (solo toca el espacio "qubi-demo", no los datos reales):
+  #   docker compose -f docker-compose.prod.yml run --rm seed
+  seed:
+    build:
+      context: .
+      target: tooling
+    command: npm run db:seed
+    environment:
+      TZ: America/Bogota
+    env_file:
+      - .env
+    profiles: ["seed"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   app:
     build:
       context: .

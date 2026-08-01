@@ -98,6 +98,35 @@ cuyo público está en `~/.ssh/authorized_keys` del VPS).
 
 El usuario del VPS debe poder ejecutar `docker` (estar en el grupo `docker`).
 
+## 5. Cuentas de invitado y datos de demostración (en producción)
+
+Para que cualquiera pueda entrar a ver la app sin pedir acceso, hay dos cuentas
+de invitado con datos reales de ejemplo. Se crean ejecutando el seed **una vez**
+en el VPS (y se puede repetir cuando se quiera refrescar la demo):
+
+```bash
+cd /opt/qubi && docker compose -f docker-compose.prod.yml run --rm seed
+```
+
+| Cuenta     | Correo                        | Rol             |
+| ---------- | ----------------------------- | --------------- |
+| Manager    | `invitado.admin@qubi.local`   | `OWNER` (admin) |
+| Trabajador | `invitado.miembro@qubi.local` | `MEMBER`        |
+
+Contraseña de ambas: `QubiDemo2026!` (se muestra en la pantalla de login).
+
+El trabajador pertenece al equipo del manager, así que desde la cuenta de
+manager se ve su producción, sus horas y sus avances; y desde la del trabajador
+se ve el feedback del manager. El seed deja contenido en todas las pantallas:
+3 proyectos, 19 tareas en los tres estados, avances con evidencia, 4 semanas de
+horas, sesiones de cronómetro (incluida una descartada por corta), chat 1 a 1 y
+por proyecto, notificaciones, bases de datos de archivos, páginas, favoritos y
+papelera.
+
+> El servicio `seed` está detrás de un perfil de Compose, así que **no** se
+> ejecuta en los despliegues automáticos. Solo toca el espacio `qubi-demo` y las
+> cuentas de invitado: los datos reales de otros espacios no se tocan.
+
 ## Comandos útiles (en el VPS)
 
 ```bash
@@ -106,6 +135,7 @@ docker compose -f docker-compose.prod.yml logs -f app      # logs de la app
 docker compose -f docker-compose.prod.yml logs -f collab   # logs de colaboración
 docker compose -f docker-compose.prod.yml ps               # estado
 docker compose -f docker-compose.prod.yml restart app
+docker compose -f docker-compose.prod.yml run --rm seed    # refrescar la demo
 ```
 
 ## Notas

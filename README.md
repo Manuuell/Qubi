@@ -24,6 +24,14 @@ El plan de trabajo completo y el roadmap por fases está en [PLAN.md](./PLAN.md)
   _Vencidas / Hoy / Esta semana / Más adelante / Sin fecha_.
 - **Registro de horas** — hoja semanal por proyecto y día, con totales por día,
   por proyecto y de la semana.
+- **Cronómetro** — siempre ligado a un **proyecto y una tarea** concreta (pendiente
+  o en curso; si estaba pendiente pasa a _En curso_ al arrancar). Widget flotante
+  con pausa, avance rápido y botón de cámara que lleva a las **evidencias de la
+  tarea**, donde se pega una captura del portapapeles, se arrastran archivos y se
+  escribe el avance con enlaces y menciones. Las sesiones de **menos de 10 minutos
+  no cuentan** como horas (se avisa y el avance sí se conserva). Mientras se
+  documenta, el reloj **se pausa o cuenta la mitad**, según lo que decida el
+  manager al crear el proyecto (afinable tarea por tarea).
 - **Páginas y notas** — editor de bloques tipo Notion con colaboración en tiempo real
   (Yjs), bases de datos, favoritos, papelera y enlaces públicos de solo lectura.
 
@@ -65,6 +73,21 @@ npm run collab
 
 Abre [http://localhost:3000](http://localhost:3000).
 
+### Cuentas de invitado (datos de demostración)
+
+`npm run db:seed` crea el espacio **Qubi Demo** con contenido en todas las
+pantallas y dos cuentas listas para usar (las credenciales se muestran en el
+login):
+
+| Cuenta     | Correo                        | Rol             |
+| ---------- | ----------------------------- | --------------- |
+| Manager    | `invitado.admin@qubi.local`   | `OWNER` (admin) |
+| Trabajador | `invitado.miembro@qubi.local` | `MEMBER`        |
+
+Contraseña de ambas: `QubiDemo2026!`. El seed es idempotente y solo toca ese
+espacio, así que se puede repetir sin miedo — también en producción
+(ver [DEPLOY-VPS.md](./DEPLOY-VPS.md)).
+
 ### Variables de entorno (desarrollo)
 
 Mínimo para arrancar (coincide con `docker-compose.yml`):
@@ -99,7 +122,9 @@ listado completo está en [.env.production.example](./.env.production.example).
 | `npm run typecheck`   | Comprobar tipos (tsc)                 |
 | `npm run db:migrate`  | Crear/aplicar migraciones             |
 | `npm run db:generate` | Generar el cliente de Prisma          |
+| `npm run db:seed`     | Espacio de demo + cuentas de invitado |
 | `npm run db:studio`   | Abrir Prisma Studio                   |
+| `npm test`            | Tests (Vitest)                        |
 
 ## Estructura
 
