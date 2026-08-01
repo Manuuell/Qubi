@@ -204,11 +204,21 @@ async function main() {
       icon: "🧊",
       ownerId: admin.id,
       members: {
+        // Jornadas distintas a propósito: así se ve que la carga se mide
+        // contra la capacidad de cada quien, no contra una cifra única.
         create: [
           { userId: admin.id, role: WorkspaceRole.OWNER },
           { userId: member.id, role: WorkspaceRole.MEMBER },
-          { userId: carla.id, role: WorkspaceRole.MEMBER },
-          { userId: diego.id, role: WorkspaceRole.MEMBER },
+          {
+            userId: carla.id,
+            role: WorkspaceRole.MEMBER,
+            weeklyCapacityMinutes: 20 * 60,
+          },
+          {
+            userId: diego.id,
+            role: WorkspaceRole.MEMBER,
+            weeklyCapacityMinutes: 30 * 60,
+          },
         ],
       },
     },
@@ -459,6 +469,7 @@ async function main() {
     startDateOffset?: number;
     progressTimerPolicy?: ProgressTimerPolicy;
     linkedPageId?: string;
+    estimateHours?: number;
   };
 
   const taskDefs: TaskDef[] = [
@@ -491,6 +502,7 @@ async function main() {
     {
       project: web,
       title: "Formulario de contacto con validación",
+      estimateHours: 6,
       body: "Validación en cliente y servidor, protección anti-spam y correo de confirmación.",
       type: IssueType.FEATURE,
       status: IssueStatus.IN_PROGRESS,
@@ -503,6 +515,7 @@ async function main() {
     {
       project: web,
       title: "Corregir el menú en móvil",
+      estimateHours: 4,
       body: "En pantallas pequeñas el menú se queda abierto al navegar a otra sección.",
       type: IssueType.BUG,
       status: IssueStatus.IN_PROGRESS,
@@ -517,6 +530,7 @@ async function main() {
     {
       project: web,
       title: "Revisar el SEO técnico",
+      estimateHours: 5,
       body: "Sitemap, datos estructurados, encabezados y velocidad de carga.",
       type: IssueType.TASK,
       status: IssueStatus.TODO,
@@ -528,6 +542,7 @@ async function main() {
     {
       project: web,
       title: "Migrar a HTTPS estricto",
+      estimateHours: 3,
       body: "Activar HSTS y revisar los enlaces internos que todavía van por http.",
       type: IssueType.TASK,
       status: IssueStatus.TODO,
@@ -550,6 +565,7 @@ async function main() {
     {
       project: web,
       title: "Publicar el blog de novedades",
+      estimateHours: 12,
       body: "Listado paginado, página de artículo y RSS.",
       type: IssueType.FEATURE,
       status: IssueStatus.TODO,
@@ -576,6 +592,7 @@ async function main() {
     {
       project: app,
       title: "Pantalla de onboarding",
+      estimateHours: 10,
       body: "Tres pasos con ilustraciones, opción de saltar y guardado del progreso.",
       type: IssueType.FEATURE,
       status: IssueStatus.IN_PROGRESS,
@@ -588,6 +605,7 @@ async function main() {
     {
       project: app,
       title: "Integrar la pasarela de pagos",
+      estimateHours: 16,
       body: "Cobro con tarjeta, reintentos y recibo por correo.",
       type: IssueType.FEATURE,
       status: IssueStatus.TODO,
@@ -600,6 +618,7 @@ async function main() {
     {
       project: app,
       title: "Modo sin conexión",
+      estimateHours: 14,
       body: "Cachear las últimas tareas y sincronizar al recuperar la red.",
       type: IssueType.FEATURE,
       status: IssueStatus.TODO,
@@ -612,6 +631,7 @@ async function main() {
     {
       project: app,
       title: "La sesión se cierra sola en Android",
+      estimateHours: 5,
       body: "Pasadas unas horas la app pide iniciar sesión otra vez; revisar el refresco del token.",
       type: IssueType.BUG,
       status: IssueStatus.IN_PROGRESS,
@@ -624,6 +644,7 @@ async function main() {
     {
       project: app,
       title: "Publicar en las tiendas",
+      estimateHours: 8,
       body: "Fichas, capturas, política de privacidad y revisión de Apple.",
       type: IssueType.TASK,
       status: IssueStatus.TODO,
@@ -636,6 +657,7 @@ async function main() {
     {
       project: app,
       title: "Pruebas de rendimiento",
+      estimateHours: 6,
       body: "Medir arranque en frío y consumo de memoria en gama media.",
       type: IssueType.TASK,
       status: IssueStatus.TODO,
@@ -649,6 +671,7 @@ async function main() {
     {
       project: ops,
       title: "Atender la cola de soporte",
+      estimateHours: 8,
       body: "Responder los tiquetes abiertos y escalar los que sean incidencias.",
       type: IssueType.TASK,
       status: IssueStatus.IN_PROGRESS,
@@ -673,6 +696,7 @@ async function main() {
     {
       project: ops,
       title: "Documentar el proceso de alta de clientes",
+      estimateHours: 4,
       body: "Guía paso a paso para que cualquiera del equipo pueda hacerlo.",
       type: IssueType.DOCS,
       status: IssueStatus.TODO,
@@ -684,6 +708,7 @@ async function main() {
     {
       project: ops,
       title: "Revisar las alertas del servidor",
+      estimateHours: 3,
       body: "Ajustar umbrales: están saltando avisos de disco sin motivo.",
       type: IssueType.BUG,
       status: IssueStatus.TODO,
@@ -717,6 +742,8 @@ async function main() {
         status: t.status,
         priority: t.priority,
         progressTimerPolicy: t.progressTimerPolicy ?? null,
+        estimateMinutes:
+          t.estimateHours != null ? Math.round(t.estimateHours * 60) : null,
         linkedPageId: t.linkedPageId ?? null,
         authorId: admin.id,
         assignees: { create: t.assignees.map((u) => ({ userId: u.id })) },

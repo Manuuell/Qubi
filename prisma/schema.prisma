@@ -227,6 +227,10 @@ model WorkspaceMember {
   role        WorkspaceRole @default(MEMBER)
   createdAt   DateTime      @default(now())
 
+  // Jornada de esta persona en el equipo, en minutos por semana (media
+  // jornada, contratos distintos…). null = la capacidad por defecto.
+  weeklyCapacityMinutes Int?
+
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -359,6 +363,10 @@ model Issue {
 
   // null = hereda la política del proyecto (Project.progressTimerPolicy).
   progressTimerPolicy ProgressTimerPolicy?
+
+  // Esfuerzo estimado en minutos. Es lo que permite pintar la carga PREVISTA
+  // en la vista de equipo: se reparte entre los días de trabajo de la tarea.
+  estimateMinutes Int?
 
   workspace     Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   project       Project?           @relation(fields: [projectId], references: [id], onDelete: Cascade)

@@ -9,6 +9,8 @@ import {
   keyToLocalDate,
   mondayKeyOf,
 } from "@/features/time/week";
+import { memberWeeklyCapacity } from "@/features/time/capacity";
+import { plannedMinutesPerDay } from "@/features/time/planning";
 
 // ── Resumen de equipo para el dashboard de manager ──────────────────────────
 
@@ -262,8 +264,11 @@ export type WorkloadSegment = {
 
 export type WorkloadDay = {
   dateKey: string;
-  minutes: number;
+  minutes: number; // horas ya registradas con el cronómetro
   segments: WorkloadSegment[];
+  plannedMinutes: number; // carga prevista (tareas asignadas con estimación)
+  plannedTasks: number; // cuántas tareas caen ese día
+  unestimatedTasks: number; // de esas, cuántas no tienen estimación
 };
 
 export type WorkloadMember = {
@@ -271,8 +276,11 @@ export type WorkloadMember = {
   name: string | null;
   email: string;
   image: string | null;
+  weeklyCapacityMinutes: number; // la suya, o la del equipo por defecto
+  hasOwnCapacity: boolean;
   days: WorkloadDay[]; // 7 (lun..dom)
   weekMinutes: number;
+  plannedWeekMinutes: number;
   busiestDayMinutes: number;
 };
 
@@ -301,10 +309,11 @@ export async function getTeamWorkload(
     addDaysToKey(weekStartKey, i),
   );
 
-  const [members, entries] = await Promise.all([
+  const [members, entries, openTasks] = await Promise.all([
     prisma.workspaceMember.findMany({
       where: { workspaceId },
       select: {
+        weeklyCapacityMinutes: true,
         user: { select: { id: true, name: true, email: true, image: true } },
       },
       orderBy: { createdAt: "asc" },
@@ -322,6 +331,23 @@ export async function getTeamWorkload(
         date: true,
         minutes: true,
         project: { select: { id: true, name: true, color: true } },
+      },
+    }),
+    // Tareas vivas con fecha límite: son las que ocupan los días que aún no
+    // han pasado (el tiempo registrado solo existe hacia atrás).
+    prisma.issue.findMany({
+      where: {
+        workspaceId,
+        status: { not: IssueStatus.DONE },
+        dueDate: { not: null },
+        assignees: { some: {} },
+      },
+      select: {
+        id: true,
+        startDate: true,
+        dueDate: true,
+        estimateMinutes: true,
+        assignees: { select: { userId: true } },
       },
     }),
   ]);
@@ -343,6 +369,38 @@ export async function getTeamWorkload(
     }
   }
 
+  // Carga prevista: la estimación de cada tarea se reparte entre sus días de
+  // trabajo y, si tiene varias personas asignadas, entre ellas (el trabajo se
+  // comparte, no se duplica).
+  const today = dateToLocalKey(new Date());
+  const planned = new Map<
+    string,
+    { minutes: number; tasks: number; unestimated: number }
+  >();
+  for (const task of openTasks) {
+    const { days, minutesPerDay } = plannedMinutesPerDay(task, today);
+    if (days.length === 0) continue;
+    const people = task.assignees.length || 1;
+    const share = Math.round(minutesPerDay / people);
+    for (const day of days) {
+      if (!dayKeys.includes(day)) continue;
+      for (const a of task.assignees) {
+        const key = `${a.userId}|${day}`;
+        const slot = planned.get(key) ?? {
+          minutes: 0,
+          tasks: 0,
+          unestimated: 0,
+        };
+        slot.minutes += share;
+        slot.tasks += 1;
+        if (!task.estimateMinutes || task.estimateMinutes <= 0) {
+          slot.unestimated += 1;
+        }
+        planned.set(key, slot);
+      }
+    }
+  }
+
   const dayTotals = new Array(7).fill(0) as number[];
   const memberRows: WorkloadMember[] = members.map((m) => {
     const days = dayKeys.map((dateKey, i) => {
@@ -352,15 +410,26 @@ export async function getTeamWorkload(
         .sort((a, b) => b.minutes - a.minutes);
       const minutes = segments.reduce((sum, s) => sum + s.minutes, 0);
       dayTotals[i] += minutes;
-      return { dateKey, minutes, segments };
+      const slot = planned.get(`${m.user.id}|${dateKey}`);
+      return {
+        dateKey,
+        minutes,
+        segments,
+        plannedMinutes: slot?.minutes ?? 0,
+        plannedTasks: slot?.tasks ?? 0,
+        unestimatedTasks: slot?.unestimated ?? 0,
+      };
     });
     return {
       userId: m.user.id,
       name: m.user.name,
       email: m.user.email,
       image: m.user.image,
+      weeklyCapacityMinutes: memberWeeklyCapacity(m.weeklyCapacityMinutes),
+      hasOwnCapacity: m.weeklyCapacityMinutes != null,
       days,
       weekMinutes: days.reduce((sum, d) => sum + d.minutes, 0),
+      plannedWeekMinutes: days.reduce((sum, d) => sum + d.plannedMinutes, 0),
       busiestDayMinutes: Math.max(0, ...days.map((d) => d.minutes)),
     };
   });

@@ -344,3 +344,20 @@ export async function toggleCommentReactionAction(input: {
     input.emoji,
   );
 }
+
+// Estimación de esfuerzo de la tarea, en minutos (null la quita). Es lo que
+// permite repartir su carga entre los días en la vista de equipo.
+export async function setTaskEstimateAction(input: {
+  taskId: string;
+  workspaceId: string;
+  projectId: string;
+  estimateMinutes: number | null;
+}) {
+  const user = await getCurrentUser();
+  await taskService.setTaskEstimate(
+    input.taskId,
+    user.id,
+    input.estimateMinutes,
+  );
+  revalidateProject(input.workspaceId, input.projectId);
+}

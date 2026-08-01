@@ -31,6 +31,7 @@ import { MentionText } from "@/features/mentions/mention-text";
 import { StartTaskButton } from "@/features/task/components/start-task-button";
 import { DeleteTaskButton } from "@/features/task/components/delete-task-button";
 import { TaskProgressPolicySelect } from "@/features/task/components/task-progress-policy-select";
+import { TaskEstimateInput } from "@/features/task/components/task-estimate-input";
 import { TimeTaskButton } from "@/features/time/components/time-task-button";
 import { PROGRESS_POLICY_LABEL } from "@/features/time/timer-rules";
 import {
@@ -311,7 +312,20 @@ export default async function TaskDetailPage({
           <span className="flex items-center gap-1.5 text-sm">
             <Clock className="text-muted-foreground size-3.5" />
             {hoursLabel(task.totalMinutes)} h
+            {task.estimateMinutes ? (
+              <span className="text-muted-foreground text-xs">
+                de {hoursLabel(task.estimateMinutes)} h estimadas
+              </span>
+            ) : null}
           </span>
+        </Field>
+        <Field label="Estimación">
+          <TaskEstimateInput
+            taskId={task.id}
+            workspaceId={workspaceId}
+            projectId={projectId}
+            estimateMinutes={task.estimateMinutes}
+          />
         </Field>
         <Field label="Responsables">
           <div className="flex flex-wrap items-center gap-1.5">

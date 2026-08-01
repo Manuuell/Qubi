@@ -71,3 +71,20 @@ export async function changeMemberRoleAction(input: {
   );
   revalidatePath(`/w/${input.workspaceId}/members`);
 }
+
+// Jornada semanal de un miembro (solo manager). Afecta a la vista de carga.
+export async function setMemberCapacityAction(input: {
+  workspaceId: string;
+  targetUserId: string;
+  weeklyCapacityMinutes: number | null;
+}) {
+  const user = await getCurrentUser();
+  await memberService.setMemberCapacity(
+    input.workspaceId,
+    user.id,
+    input.targetUserId,
+    input.weeklyCapacityMinutes,
+  );
+  revalidatePath(`/w/${input.workspaceId}/members`);
+  revalidatePath(`/w/${input.workspaceId}`);
+}

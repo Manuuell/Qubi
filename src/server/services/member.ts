@@ -149,3 +149,21 @@ export async function getMemberProfile(
     stats,
   };
 }
+
+// Jornada semanal de una persona del equipo (null = la capacidad por defecto).
+// Solo el manager la fija; es lo que la vista de carga usa como referencia.
+export async function setMemberCapacity(
+  workspaceId: string,
+  actingUserId: string,
+  targetUserId: string,
+  weeklyCapacityMinutes: number | null,
+) {
+  await assertWorkspaceAdmin(workspaceId, actingUserId);
+  if (weeklyCapacityMinutes != null && weeklyCapacityMinutes <= 0) {
+    throw new Error("La jornada tiene que ser mayor que cero");
+  }
+  return prisma.workspaceMember.update({
+    where: { workspaceId_userId: { workspaceId, userId: targetUserId } },
+    data: { weeklyCapacityMinutes },
+  });
+}

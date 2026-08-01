@@ -658,3 +658,19 @@ export async function deleteTask(taskId: string, userId: string) {
   await assertWorkspaceAdmin(task.workspaceId, userId);
   await prisma.issue.delete({ where: { id: taskId } });
 }
+
+// Estimación de esfuerzo (minutos). null la quita.
+export async function setTaskEstimate(
+  taskId: string,
+  userId: string,
+  estimateMinutes: number | null,
+) {
+  await assertTaskAccess(taskId, userId);
+  if (estimateMinutes != null && estimateMinutes < 0) {
+    throw new Error("La estimación no puede ser negativa");
+  }
+  return prisma.issue.update({
+    where: { id: taskId },
+    data: { estimateMinutes },
+  });
+}

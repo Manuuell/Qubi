@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, TriangleAlert } from "lucide-react";
-import type { TeamWorkload } from "@/server/services/manager";
+import type { TeamWorkload, WorkloadDay } from "@/server/services/manager";
 import {
   DAILY_CAPACITY_MINUTES,
   WEEKLY_CAPACITY_MINUTES,
   capacityPercent,
+  dailyCapacityOf,
   loadLevel,
   overCapacityMinutes,
 } from "@/features/time/capacity";
+import { MemberCapacitySelect } from "@/features/workspace/components/member-capacity-select";
 import {
   WEEKDAY_LABELS,
   addDaysToKey,
@@ -47,8 +49,10 @@ export function TeamWorkloadGrid({
         <div>
           <p className="text-sm font-medium">Carga del equipo</p>
           <p className="text-muted-foreground text-xs">
-            Jornada de referencia: {hoursLabel(DAILY_CAPACITY_MINUTES)} h al día
-            · {hoursLabel(WEEKLY_CAPACITY_MINUTES)} h a la semana
+            Barras llenas: horas ya registradas · Contorno punteado: trabajo
+            previsto (tareas asignadas con estimación). Jornada por defecto:{" "}
+            {hoursLabel(WEEKLY_CAPACITY_MINUTES)} h/semana (
+            {hoursLabel(DAILY_CAPACITY_MINUTES)} h/día), ajustable por persona.
           </p>
         </div>
         <div className="flex items-center gap-1">
@@ -80,7 +84,7 @@ export function TeamWorkloadGrid({
       <div className="overflow-x-auto">
         <div className="min-w-[46rem]">
           {/* Cabecera de días */}
-          <div className="border-border/60 grid grid-cols-[11rem_repeat(7,minmax(0,1fr))] border-b">
+          <div className="border-border/60 grid grid-cols-[13rem_repeat(7,minmax(0,1fr))] border-b">
             <div className="text-muted-foreground px-5 py-2 text-xs font-medium">
               {members.length} {members.length === 1 ? "persona" : "personas"}
             </div>
@@ -118,12 +122,12 @@ export function TeamWorkloadGrid({
               const label = m.name?.trim() || m.email;
               const weekLevel = loadLevel(
                 m.weekMinutes,
-                WEEKLY_CAPACITY_MINUTES,
+                m.weeklyCapacityMinutes,
               );
               return (
                 <div
                   key={m.userId}
-                  className="grid grid-cols-[11rem_repeat(7,minmax(0,1fr))] items-stretch"
+                  className="grid grid-cols-[13rem_repeat(7,minmax(0,1fr))] items-stretch"
                 >
                   <div className="flex min-w-0 flex-col justify-center gap-1.5 px-5 py-3">
                     <Link
@@ -142,7 +146,12 @@ export function TeamWorkloadGrid({
                     </Link>
                     <p className="text-muted-foreground text-xs tabular-nums">
                       {hoursLabel(m.weekMinutes)} /{" "}
-                      {hoursLabel(WEEKLY_CAPACITY_MINUTES)} h
+                      {hoursLabel(m.weeklyCapacityMinutes)} h
+                      {m.plannedWeekMinutes > 0 && (
+                        <span className="ml-1">
+                          · {hoursLabel(m.plannedWeekMinutes)} h previstas
+                        </span>
+                      )}
                     </p>
                     <div className="bg-muted h-1.5 overflow-hidden rounded-full">
                       <div
@@ -154,14 +163,25 @@ export function TeamWorkloadGrid({
                               : "bg-primary"
                         }`}
                         style={{
-                          width: `${capacityPercent(m.weekMinutes, WEEKLY_CAPACITY_MINUTES)}%`,
+                          width: `${capacityPercent(m.weekMinutes, m.weeklyCapacityMinutes)}%`,
                         }}
                       />
                     </div>
+                    <MemberCapacitySelect
+                      workspaceId={workspaceId}
+                      targetUserId={m.userId}
+                      weeklyCapacityMinutes={m.weeklyCapacityMinutes}
+                      hasOwnCapacity={m.hasOwnCapacity}
+                    />
                   </div>
 
                   {m.days.map((day, i) => (
-                    <DayCell key={day.dateKey} day={day} weekend={i >= 5} />
+                    <DayCell
+                      key={day.dateKey}
+                      day={day}
+                      weekend={i >= 5}
+                      dailyCapacity={dailyCapacityOf(m.weeklyCapacityMinutes)}
+                    />
                   ))}
                 </div>
               );
@@ -169,7 +189,7 @@ export function TeamWorkloadGrid({
           </div>
 
           {/* Totales por día */}
-          <div className="border-border/60 bg-muted/20 grid grid-cols-[11rem_repeat(7,minmax(0,1fr))] border-t">
+          <div className="border-border/60 bg-muted/20 grid grid-cols-[13rem_repeat(7,minmax(0,1fr))] border-t">
             <div className="text-muted-foreground px-5 py-2 text-xs font-medium">
               Total del día
             </div>
@@ -200,34 +220,34 @@ export function TeamWorkloadGrid({
 function DayCell({
   day,
   weekend,
+  dailyCapacity,
 }: {
-  day: {
-    dateKey: string;
-    minutes: number;
-    segments: {
-      projectId: string;
-      projectName: string;
-      projectColor: string | null;
-      minutes: number;
-    }[];
-  };
+  day: WorkloadDay;
   weekend: boolean;
+  dailyCapacity: number;
 }) {
-  const over = overCapacityMinutes(day.minutes);
-  const level = loadLevel(day.minutes);
+  // Lo registrado y lo previsto compiten por la misma jornada: si entre las
+  // dos cosas se pasa del día, es sobrecarga.
+  const busy = day.minutes + day.plannedMinutes;
+  const over = overCapacityMinutes(busy, dailyCapacity);
+  const level = loadLevel(busy, dailyCapacity);
+
+  const detail = [
+    ...day.segments.map((s) => `${s.projectName}: ${hoursLabel(s.minutes)} h`),
+    day.plannedMinutes > 0
+      ? `Previsto: ${hoursLabel(day.plannedMinutes)} h (${day.plannedTasks} ${
+          day.plannedTasks === 1 ? "tarea" : "tareas"
+        })`
+      : null,
+    day.unestimatedTasks > 0 ? `${day.unestimatedTasks} sin estimar` : null,
+  ].filter(Boolean) as string[];
 
   return (
     <div
       className={`flex flex-col justify-end p-1.5 ${
         weekend ? "bg-muted/30" : ""
       }`}
-      title={
-        day.minutes === 0
-          ? "Sin horas registradas"
-          : day.segments
-              .map((s) => `${s.projectName}: ${hoursLabel(s.minutes)} h`)
-              .join(" · ")
-      }
+      title={detail.length > 0 ? detail.join(" · ") : "Nada asignado"}
     >
       {/* Altura fija: es la jornada completa. Cada tramo ocupa la parte que le
           toca de esa jornada, así se comparan los días de un vistazo. */}
@@ -238,19 +258,38 @@ function DayCell({
             <span>+{hoursLabel(over)} h</span>
           </div>
         )}
+        {/* Trabajo previsto: contorno punteado, para distinguirlo de un vistazo
+            de las horas que ya se trabajaron de verdad. */}
+        {day.plannedMinutes > 0 && (
+          <div
+            className="border-primary/60 text-primary/80 flex min-h-1.5 shrink-0 items-center justify-center rounded-lg border border-dashed text-[9px] font-medium"
+            style={{
+              height: `${capacityPercent(day.plannedMinutes, dailyCapacity)}%`,
+            }}
+          >
+            {day.plannedTasks > 0 && day.plannedMinutes >= dailyCapacity / 4
+              ? `${day.plannedTasks}`
+              : ""}
+          </div>
+        )}
+        {day.plannedMinutes === 0 && day.unestimatedTasks > 0 && (
+          <div className="border-muted-foreground/40 text-muted-foreground flex h-4 shrink-0 items-center justify-center rounded-lg border border-dashed text-[9px]">
+            {day.unestimatedTasks}
+          </div>
+        )}
         {day.segments.map((s) => (
           <div
             key={s.projectId}
             className="min-h-1.5 shrink-0 rounded-lg"
             style={{
-              height: `${capacityPercent(s.minutes)}%`,
+              height: `${capacityPercent(s.minutes, dailyCapacity)}%`,
               background: s.projectColor ?? "var(--primary)",
               opacity: level === "over" ? 0.8 : 1,
             }}
           />
         ))}
       </div>
-      {day.minutes > 0 && (
+      {busy > 0 && (
         <span
           className={`pt-0.5 text-center text-[10px] tabular-nums ${
             level === "over"
@@ -258,7 +297,7 @@ function DayCell({
               : "text-muted-foreground"
           }`}
         >
-          {hoursLabel(day.minutes)} h
+          {hoursLabel(busy)} h
         </span>
       )}
     </div>
