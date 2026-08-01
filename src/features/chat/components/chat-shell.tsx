@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/features/task/labels";
 import { cn } from "@/lib/utils";
 import type { ConversationListItem } from "@/server/services/chat";
+import { stripMentionMarkup } from "@/features/mentions/mentions";
 
 // "hace 5 min" corto, reutilizado del patrón de notificaciones.
 function timeAgo(date: Date) {
@@ -90,7 +91,9 @@ export function ChatShell({
                     </span>
                     <span className="text-muted-foreground flex items-center justify-between gap-2">
                       <span className="truncate text-xs">
-                        {c.lastMessage?.body || "Sin mensajes todavía"}
+                        {c.lastMessage
+                          ? stripMentionMarkup(c.lastMessage.body)
+                          : "Sin mensajes todavía"}
                       </span>
                       {c.unreadCount > 0 && (
                         <span className="bg-primary text-primary-foreground grid size-4 shrink-0 place-items-center rounded-full text-[10px] font-medium">

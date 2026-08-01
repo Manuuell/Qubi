@@ -89,6 +89,56 @@ export async function notifyTaskReopened(
   }
 }
 
+// Notifica a quienes fueron mencionados con @ en un comentario de tarea.
+export async function notifyMentionedInTask(
+  issue: IssueForNotice,
+  mentionedUserIds: string[],
+  actorId: string,
+) {
+  const recipients = mentionedUserIds.filter((id) => id !== actorId);
+  if (recipients.length === 0) return;
+  await prisma.notification.createMany({
+    data: recipients.map((userId) => ({
+      userId,
+      type: NotificationType.MENTIONED,
+      title: `Te mencionaron en la tarea #${issue.number}`,
+      body: issue.title,
+      href: `/w/${issue.workspaceId}/tasks/${issue.number}`,
+      workspaceId: issue.workspaceId,
+      issueId: issue.id,
+      actorId,
+    })),
+  });
+  for (const userId of recipients) {
+    publishToUser(userId, { type: "notification" });
+  }
+}
+
+// Notifica a quienes fueron mencionados con @ en un mensaje de chat.
+export async function notifyMentionedInChat(
+  workspaceId: string,
+  conversationId: string,
+  mentionedUserIds: string[],
+  actorId: string,
+) {
+  const recipients = mentionedUserIds.filter((id) => id !== actorId);
+  if (recipients.length === 0) return;
+  await prisma.notification.createMany({
+    data: recipients.map((userId) => ({
+      userId,
+      type: NotificationType.MENTIONED,
+      title: "Te mencionaron en el chat",
+      body: "",
+      href: `/w/${workspaceId}/chat/${conversationId}`,
+      workspaceId,
+      actorId,
+    })),
+  });
+  for (const userId of recipients) {
+    publishToUser(userId, { type: "notification" });
+  }
+}
+
 // Genera notificaciones para las tareas del usuario que vencen pronto (o ya
 // vencieron) y todavía no se han avisado. Se ejecuta de forma perezosa al abrir
 // la bandeja, así no hace falta un cron. Crea como máximo una por tarea.

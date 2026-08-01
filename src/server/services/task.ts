@@ -10,7 +10,9 @@ import {
   notifyTaskAssigned,
   notifyReviewFeedback,
   notifyTaskReopened,
+  notifyMentionedInTask,
 } from "@/server/services/notification";
+import { extractMentionedUserIds } from "@/features/mentions/mentions";
 import {
   assertWorkspaceMember,
   assertWorkspaceAdmin,
@@ -478,7 +480,12 @@ export async function addTaskComment(
     },
   });
 
-  if (kind === IssueCommentKind.REVIEW_FEEDBACK) {
+  const mentionCandidates = extractMentionedUserIds(body);
+
+  if (
+    kind === IssueCommentKind.REVIEW_FEEDBACK ||
+    mentionCandidates.length > 0
+  ) {
     const issue = await prisma.issue.findUniqueOrThrow({
       where: { id: taskId },
       select: {
@@ -489,11 +496,29 @@ export async function addTaskComment(
         assignees: { select: { userId: true } },
       },
     });
-    await notifyReviewFeedback(
-      issue,
-      issue.assignees.map((a) => a.userId),
-      userId,
-    );
+    // Solo se notifica a IDs que de verdad son miembros del workspace: el
+    // texto de la mención lo escribe el cliente y no hay que confiar en él.
+    const mentionedIds = mentionCandidates.length
+      ? (
+          await prisma.workspaceMember.findMany({
+            where: {
+              workspaceId: issue.workspaceId,
+              userId: { in: mentionCandidates },
+            },
+            select: { userId: true },
+          })
+        ).map((m) => m.userId)
+      : [];
+    if (kind === IssueCommentKind.REVIEW_FEEDBACK) {
+      await notifyReviewFeedback(
+        issue,
+        issue.assignees.map((a) => a.userId),
+        userId,
+      );
+    }
+    if (mentionedIds.length > 0) {
+      await notifyMentionedInTask(issue, mentionedIds, userId);
+    }
   }
 
   return comment;

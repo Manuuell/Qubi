@@ -50,6 +50,7 @@ enum NotificationType {
   TASK_DUE_SOON // una tarea tuya está por vencer
   TASK_REVIEW_FEEDBACK // el manager comentó/dio feedback sobre tus avances
   TASK_REOPENED // el manager devolvió tu tarea a pendiente o en curso
+  MENTIONED // te mencionaron con @ en un comentario o mensaje de chat
 }
 
 // Tipo de tarea (para clasificar y filtrar el trabajo).

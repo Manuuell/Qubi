@@ -3,6 +3,8 @@
 import { useRef, useState, useTransition, type FormEvent } from "react";
 import { Paperclip, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MentionTextarea } from "@/features/mentions/mention-textarea";
+import type { MentionMember } from "@/features/mentions/mentions";
 
 // Formulario genérico reutilizado para comentarios normales, avances (kind
 // PROGRESS) y feedback del manager (kind REVIEW_FEEDBACK) — solo cambia la
@@ -15,6 +17,7 @@ export function TaskNoteForm({
   placeholder,
   submitLabel,
   attachmentLabel = "Adjuntar captura",
+  members,
 }: {
   taskId: string;
   workspaceId: string;
@@ -23,6 +26,7 @@ export function TaskNoteForm({
   placeholder: string;
   submitLabel: string;
   attachmentLabel?: string;
+  members: MentionMember[];
 }) {
   const textRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -56,8 +60,9 @@ export function TaskNoteForm({
 
   return (
     <form onSubmit={submit} className="space-y-2">
-      <textarea
+      <MentionTextarea
         ref={textRef}
+        members={members}
         rows={3}
         placeholder={placeholder}
         className="bg-background focus:ring-ring transition-ios w-full rounded-2xl border p-3 text-sm outline-none focus:ring-2"

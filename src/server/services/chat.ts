@@ -3,6 +3,8 @@ import { assertWorkspaceMember } from "@/server/lib/permissions";
 import { getProject } from "@/server/services/project";
 import { publishToUser } from "@/server/lib/event-bus";
 import { QUICK_REACTIONS } from "@/features/task/labels";
+import { extractMentionedUserIds } from "@/features/mentions/mentions";
+import { notifyMentionedInChat } from "@/server/services/notification";
 
 const personSelect = {
   id: true,
@@ -294,6 +296,29 @@ export async function sendMessage(
   });
   for (const p of participants) {
     publishToUser(p.userId, { type: "chat", conversationId });
+  }
+
+  const mentionCandidates = extractMentionedUserIds(trimmed);
+  if (mentionCandidates.length > 0) {
+    const conversation = await prisma.conversation.findUniqueOrThrow({
+      where: { id: conversationId },
+      select: { workspaceId: true },
+    });
+    // Igual que en comentarios de tareas: solo se notifica a quien de
+    // verdad es miembro del workspace.
+    const mentioned = await prisma.workspaceMember.findMany({
+      where: {
+        workspaceId: conversation.workspaceId,
+        userId: { in: mentionCandidates },
+      },
+      select: { userId: true },
+    });
+    await notifyMentionedInChat(
+      conversation.workspaceId,
+      conversationId,
+      mentioned.map((m) => m.userId),
+      userId,
+    );
   }
 
   return message;

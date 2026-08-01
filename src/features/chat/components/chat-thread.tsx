@@ -21,6 +21,13 @@ import {
   CHAT_EVENT,
   type RealtimeChatEvent,
 } from "@/features/realtime/realtime-provider";
+import { MentionText } from "@/features/mentions/mention-text";
+import { MentionSuggestions } from "@/features/mentions/mention-suggestions";
+import {
+  filterMentionCandidates,
+  mentionMarkup,
+  type MentionMember,
+} from "@/features/mentions/mentions";
 
 export type ChatMessageData = {
   id: string;
@@ -60,6 +67,7 @@ export function ChatThread({
   otherUser,
   memberCount,
   initialMessages,
+  members,
 }: {
   workspaceId: string;
   conversationId: string;
@@ -74,6 +82,7 @@ export function ChatThread({
   } | null;
   memberCount: number;
   initialMessages: ChatMessageData[];
+  members: MentionMember[];
 }) {
   const [messages, setMessages] = useState(initialMessages);
   const [body, setBody] = useState("");
@@ -193,6 +202,26 @@ export function ChatThread({
     });
   }
 
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+
+  function handleBodyChange(value: string) {
+    setBody(value);
+    const before = value.slice(0, value.length);
+    const match = before.match(/(?:^|\s)@([^\s@]*)$/);
+    setMentionQuery(match ? match[1] : null);
+  }
+
+  function pickMention(member: MentionMember) {
+    const withoutQuery = body.replace(/(?:^|\s)@([^\s@]*)$/, (m) =>
+      m.startsWith(" ") ? " " : "",
+    );
+    setBody(`${withoutQuery}${mentionMarkup(member)} `);
+    setMentionQuery(null);
+  }
+
+  const mentionCandidates =
+    mentionQuery !== null ? filterMentionCandidates(members, mentionQuery) : [];
+
   const label =
     kind === "GROUP"
       ? title
@@ -279,7 +308,11 @@ export function ChatThread({
                         {m.sender.name?.trim() || m.sender.email}
                       </p>
                     )}
-                    {m.body && <p className="whitespace-pre-wrap">{m.body}</p>}
+                    {m.body && (
+                      <p className="whitespace-pre-wrap">
+                        <MentionText body={m.body} />
+                      </p>
+                    )}
                     {m.attachmentUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -344,13 +377,24 @@ export function ChatThread({
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
         </label>
-        <input
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder={file ? file.name : "Escribe un mensaje…"}
-          disabled={sending}
-          className="bg-muted focus:ring-ring transition-ios flex-1 rounded-full px-4 py-2 text-sm outline-none focus:ring-2"
-        />
+        <div className="relative min-w-0 flex-1">
+          {mentionQuery !== null && (
+            <MentionSuggestions
+              candidates={mentionCandidates}
+              onSelect={pickMention}
+            />
+          )}
+          <input
+            value={body}
+            onChange={(e) => handleBodyChange(e.target.value)}
+            onBlur={() => setMentionQuery(null)}
+            placeholder={
+              file ? file.name : "Escribe un mensaje… (@ para mencionar)"
+            }
+            disabled={sending}
+            className="bg-muted focus:ring-ring transition-ios w-full rounded-full px-4 py-2 text-sm outline-none focus:ring-2"
+          />
+        </div>
         <button
           type="submit"
           disabled={sending || (!body.trim() && !file)}

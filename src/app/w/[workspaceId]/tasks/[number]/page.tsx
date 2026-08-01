@@ -27,6 +27,7 @@ import { TaskStartDateInput } from "@/features/task/components/task-start-date-i
 import { TaskDueDateInput } from "@/features/task/components/task-due-date-input";
 import { TaskAttachments } from "@/features/task/components/task-attachments";
 import { CommentReactions } from "@/features/task/components/comment-reactions";
+import { MentionText } from "@/features/mentions/mention-text";
 import { StartTaskButton } from "@/features/task/components/start-task-button";
 import { DeleteTaskButton } from "@/features/task/components/delete-task-button";
 import {
@@ -103,7 +104,9 @@ function NoteCard({
         )}
       </div>
       {comment.body && (
-        <p className="text-sm whitespace-pre-wrap">{comment.body}</p>
+        <p className="text-sm whitespace-pre-wrap">
+          <MentionText body={comment.body} />
+        </p>
       )}
       {comment.attachmentUrl && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -384,6 +387,7 @@ export default async function TaskDetailPage({
             placeholder="Ej: quedó listo el formulario y las validaciones…"
             submitLabel="Guardar avance"
             attachmentLabel="Adjuntar captura"
+            members={memberOptions}
           />
           {isAdmin && (
             <TaskNoteForm
@@ -394,6 +398,7 @@ export default async function TaskDetailPage({
               placeholder="Feedback sobre los avances (visible para los responsables)…"
               submitLabel="Enviar feedback"
               attachmentLabel="Adjuntar archivo"
+              members={memberOptions}
             />
           )}
         </SegmentedControlPanel>
@@ -413,8 +418,9 @@ export default async function TaskDetailPage({
             workspaceId={workspaceId}
             projectId={projectId}
             action={addTaskCommentAction}
-            placeholder="Escribe un comentario…"
+            placeholder="Escribe un comentario… (@ para mencionar)"
             submitLabel="Comentar"
+            members={memberOptions}
           />
         </SegmentedControlPanel>
 
