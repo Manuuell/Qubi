@@ -5,6 +5,7 @@ import { WorkspaceRole } from "@/generated/prisma/enums";
 import { getCurrentUser } from "@/lib/auth";
 import * as memberService from "@/server/services/member";
 import * as inviteService from "@/server/services/invite";
+import { checkRateLimit } from "@/server/lib/rate-limit";
 
 export async function inviteMemberAction(input: {
   workspaceId: string;
@@ -12,6 +13,17 @@ export async function inviteMemberAction(input: {
   role?: WorkspaceRole;
 }) {
   const user = await getCurrentUser();
+
+  const rateLimit = checkRateLimit(`invite:${user.id}`, {
+    max: 20,
+    windowMs: 60 * 60_000,
+  });
+  if (!rateLimit.ok) {
+    throw new Error(
+      "Enviaste demasiadas invitaciones seguidas. Espera un momento.",
+    );
+  }
+
   await inviteService.inviteToWorkspace(
     input.workspaceId,
     user.id,

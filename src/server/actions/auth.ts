@@ -12,6 +12,7 @@ import {
   sendPasswordResetEmail,
   sendVerificationEmail,
 } from "@/server/services/auth-email";
+import { checkRateLimit } from "@/server/lib/rate-limit";
 
 export type FormState = {
   error?: string;
@@ -28,6 +29,18 @@ export async function loginAction(
     .trim()
     .toLowerCase();
   const password = String(formData.get("password") ?? "");
+
+  // Por cuenta, no por IP: evita fuerza bruta contra un email concreto sin
+  // depender de la IP del cliente (no siempre confiable tras un proxy).
+  const rateLimit = checkRateLimit(`login:${email}`, {
+    max: 10,
+    windowMs: 5 * 60_000,
+  });
+  if (!rateLimit.ok) {
+    return {
+      error: "Demasiados intentos. Espera unos minutos antes de reintentar.",
+    };
+  }
 
   try {
     await signIn("credentials", { email, password, redirectTo: "/" });
@@ -84,11 +97,19 @@ export async function resendVerificationAction(input: {
   email: string;
 }): Promise<FormState> {
   const email = input.email.trim().toLowerCase();
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (user && !user.emailVerified) {
-    await sendVerificationEmail(email);
+
+  const rateLimit = checkRateLimit(`resend-verify:${email}`, {
+    max: 3,
+    windowMs: 10 * 60_000,
+  });
+  if (rateLimit.ok) {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (user && !user.emailVerified) {
+      await sendVerificationEmail(email);
+    }
   }
-  // Respuesta genérica para no revelar si la cuenta existe.
+  // Respuesta genérica para no revelar si la cuenta existe (ni si se topó
+  // con el límite de reenvíos).
   return {
     info: "Si la cuenta existe y aún no está verificada, te enviamos un nuevo correo.",
   };
@@ -113,9 +134,15 @@ export async function requestPasswordResetAction(
     .trim()
     .toLowerCase();
 
-  const user = await prisma.user.findUnique({ where: { email } });
-  // Solo tiene sentido para cuentas con contraseña (las de Google no aplican).
-  if (user?.hashedPassword) await sendPasswordResetEmail(email);
+  const rateLimit = checkRateLimit(`reset-request:${email}`, {
+    max: 3,
+    windowMs: 10 * 60_000,
+  });
+  if (rateLimit.ok) {
+    const user = await prisma.user.findUnique({ where: { email } });
+    // Solo tiene sentido para cuentas con contraseña (las de Google no aplican).
+    if (user?.hashedPassword) await sendPasswordResetEmail(email);
+  }
 
   return {
     info: "Si existe una cuenta con ese correo, te enviamos un enlace para restablecer la contraseña.",

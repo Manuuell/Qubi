@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import * as chat from "@/server/services/chat";
 import { uploadFile } from "@/lib/storage";
+import { checkRateLimit } from "@/server/lib/rate-limit";
 
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 
@@ -36,6 +37,15 @@ export async function sendChatMessageAction(formData: FormData) {
   }
 
   const user = await getCurrentUser();
+
+  const rateLimit = checkRateLimit(`chat-send:${user.id}`, {
+    max: 30,
+    windowMs: 60_000,
+  });
+  if (!rateLimit.ok) {
+    throw new Error("Estás enviando mensajes muy rápido. Espera un momento.");
+  }
+
   await chat.sendMessage(conversationId, user.id, body, attachmentUrl);
   revalidatePath(`/w/${workspaceId}/chat/${conversationId}`);
   revalidatePath(`/w/${workspaceId}/chat`, "layout");
