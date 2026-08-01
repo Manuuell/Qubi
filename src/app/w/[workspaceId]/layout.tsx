@@ -4,6 +4,7 @@ import { getWorkspace, getUserWorkspaces } from "@/server/services/workspace";
 import { getPageTree, getFavoritePages } from "@/server/services/page";
 import { listProjects } from "@/server/services/project";
 import { getInbox } from "@/server/services/notification";
+import { getUnreadChatCount } from "@/server/services/chat";
 import { getRunningTimer } from "@/server/services/time";
 import { readRing } from "@/server/account-ring";
 import { Sidebar } from "@/features/workspace/components/sidebar";
@@ -25,16 +26,25 @@ export default async function WorkspaceLayout({
   const workspace = await getWorkspace(workspaceId, user.id);
   if (!workspace) notFound();
 
-  const [pages, workspaces, favorites, projects, ring, inbox, runningTimer] =
-    await Promise.all([
-      getPageTree(workspaceId),
-      getUserWorkspaces(user.id),
-      getFavoritePages(user.id, workspaceId),
-      listProjects(workspaceId),
-      readRing(),
-      getInbox({ id: user.id, email: user.email }),
-      getRunningTimer(user.id),
-    ]);
+  const [
+    pages,
+    workspaces,
+    favorites,
+    projects,
+    ring,
+    inbox,
+    runningTimer,
+    chatUnreadCount,
+  ] = await Promise.all([
+    getPageTree(workspaceId),
+    getUserWorkspaces(user.id),
+    getFavoritePages(user.id, workspaceId),
+    listProjects(workspaceId),
+    readRing(),
+    getInbox({ id: user.id, email: user.email }),
+    getRunningTimer(user.id),
+    getUnreadChatCount(workspaceId, user.id),
+  ]);
 
   // Otras cuentas recordadas en este navegador (excluye la activa).
   const accounts = ring
@@ -70,6 +80,7 @@ export default async function WorkspaceLayout({
               userEmail={user.email}
               accounts={accounts}
               inbox={inbox}
+              chatUnreadCount={chatUnreadCount}
             />
             <main className="bg-card flex min-w-0 flex-1 flex-col overflow-y-auto rounded-3xl shadow-xs">
               <div className="p-2 md:hidden">

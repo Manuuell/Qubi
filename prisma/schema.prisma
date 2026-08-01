@@ -81,22 +81,24 @@ model User {
   updatedAt      DateTime  @updatedAt
 
   memberships       WorkspaceMember[]
-  ownedWorkspaces   Workspace[]        @relation("WorkspaceOwner")
-  createdPages      Page[]             @relation("PageCreatedBy")
+  ownedWorkspaces   Workspace[]               @relation("WorkspaceOwner")
+  createdPages      Page[]                    @relation("PageCreatedBy")
   accounts          Account[]
   sessions          Session[]
   favorites         Favorite[]
-  authoredIssues    Issue[]            @relation("IssueAuthor")
+  authoredIssues    Issue[]                   @relation("IssueAuthor")
   issueAssignments  IssueAssignee[]
-  issueComments     IssueComment[]     @relation("IssueCommentAuthor")
-  issueAttachments  IssueAttachment[]  @relation("IssueAttachmentUploader")
-  issueStatusEvents IssueStatusEvent[] @relation("IssueStatusEventActor")
+  issueComments     IssueComment[]            @relation("IssueCommentAuthor")
+  issueAttachments  IssueAttachment[]         @relation("IssueAttachmentUploader")
+  issueStatusEvents IssueStatusEvent[]        @relation("IssueStatusEventActor")
   timeEntries       TimeEntry[]
-  notifications     Notification[]     @relation("NotificationRecipient")
-  triggeredNotifs   Notification[]     @relation("NotificationActor")
-  sentInvites       WorkspaceInvite[]  @relation("InviteCreatedBy")
+  notifications     Notification[]            @relation("NotificationRecipient")
+  triggeredNotifs   Notification[]            @relation("NotificationActor")
+  sentInvites       WorkspaceInvite[]         @relation("InviteCreatedBy")
   runningTimer      RunningTimer?
   workSessions      WorkSession[]
+  conversations     ConversationParticipant[]
+  chatMessages      ChatMessage[]             @relation("ChatMessageSender")
 }
 
 // ── Auth.js (NextAuth) ───────────────────────────────────────────────────
@@ -160,6 +162,7 @@ model Workspace {
   invites       WorkspaceInvite[]
   notifications Notification[]
   workSessions  WorkSession[]
+  conversations Conversation[]
 
   @@index([ownerId])
 }
@@ -567,4 +570,47 @@ model PropertyValue {
 
   @@unique([pageId, propertyId])
   @@index([pageId])
+}
+
+// ── Chat entre usuarios ──────────────────────────────────────────────────
+// Conversación 1 a 1 dentro de un workspace. El par de participantes es
+// único (se busca/crea en el servicio antes de insertar).
+model Conversation {
+  id          String   @id @default(cuid())
+  workspaceId String
+  createdAt   DateTime @default(now())
+
+  workspace    Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  participants ConversationParticipant[]
+  messages     ChatMessage[]
+
+  @@index([workspaceId])
+}
+
+model ConversationParticipant {
+  id             String    @id @default(cuid())
+  conversationId String
+  userId         String
+  lastReadAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String?
+  body           String   @default("")
+  attachmentUrl  String?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User?        @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
 }

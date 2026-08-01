@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getMemberProfile } from "@/server/services/member";
 import { hoursLabel } from "@/features/time/week";
 import { RoleBadge } from "@/features/workspace/components/role-badge";
+import { StartChatButton } from "@/features/chat/components/start-chat-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 
@@ -65,6 +66,11 @@ export default async function MemberProfilePage({
           <Calendar className="size-3.5" />
           Se unió el {joinedFmt.format(new Date(profile.joinedAt))}
         </p>
+        <StartChatButton
+          workspaceId={workspaceId}
+          otherUserId={userId}
+          className="mt-3 text-sm"
+        />
       </Card>
 
       {profile.stats ? (

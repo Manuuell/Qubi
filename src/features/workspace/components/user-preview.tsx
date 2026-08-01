@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RoleBadge } from "@/features/workspace/components/role-badge";
+import { StartChatButton } from "@/features/chat/components/start-chat-button";
 import { WorkspaceRole } from "@/generated/prisma/enums";
 
 // Avatar clicable: abre un widget con la foto en grande + nombre. El nombre
@@ -16,6 +17,7 @@ export function UserPreview({
   image,
   role,
   showName = true,
+  currentUserId,
 }: {
   workspaceId: string;
   userId: string;
@@ -24,6 +26,7 @@ export function UserPreview({
   image?: string | null;
   role?: WorkspaceRole;
   showName?: boolean;
+  currentUserId?: string;
 }) {
   const [open, setOpen] = useState(false);
   const initial = (name?.trim()?.charAt(0) || email.charAt(0)).toUpperCase();
@@ -75,6 +78,13 @@ export function UserPreview({
             >
               Ver perfil
             </Link>
+            {currentUserId && currentUserId !== userId && (
+              <StartChatButton
+                workspaceId={workspaceId}
+                otherUserId={userId}
+                className="mt-1.5 block text-xs font-medium"
+              />
+            )}
           </div>
         </>
       )}

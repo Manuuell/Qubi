@@ -64,10 +64,12 @@ function NoteCard({
   comment,
   workspaceId,
   roleByUserId,
+  currentUserId,
 }: {
   comment: CommentRow;
   workspaceId: string;
   roleByUserId: Record<string, WorkspaceRole>;
+  currentUserId: string;
 }) {
   const isFeedback = comment.kind === IssueCommentKind.REVIEW_FEEDBACK;
   return (
@@ -84,6 +86,7 @@ function NoteCard({
             email={comment.author.email}
             image={comment.author.image}
             role={roleByUserId[comment.author.id]}
+            currentUserId={currentUserId}
           />
         ) : (
           <span className="text-muted-foreground text-xs">alguien</span>
@@ -360,6 +363,7 @@ export default async function TaskDetailPage({
               comment={c}
               workspaceId={workspaceId}
               roleByUserId={roleByUserId}
+              currentUserId={user.id}
             />
           ))}
           <TaskNoteForm
@@ -391,6 +395,7 @@ export default async function TaskDetailPage({
               comment={c}
               workspaceId={workspaceId}
               roleByUserId={roleByUserId}
+              currentUserId={user.id}
             />
           ))}
           <TaskNoteForm

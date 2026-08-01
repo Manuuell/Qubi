@@ -11,6 +11,7 @@ import {
   FileText,
   HelpCircle,
   Home,
+  MessageCircle,
   Plus,
   Star,
   Table,
@@ -60,6 +61,7 @@ export function Sidebar({
   userEmail,
   accounts,
   inbox,
+  chatUnreadCount = 0,
 }: {
   workspace: {
     id: string;
@@ -80,6 +82,7 @@ export function Sidebar({
   userEmail: string;
   accounts: { userId: string; name: string | null; email: string }[];
   inbox: Inbox;
+  chatUnreadCount?: number;
 }) {
   const tree = buildTree(pages);
   const pageTree = tree.filter((n) => n.type !== "DATABASE");
@@ -258,6 +261,23 @@ export function Sidebar({
         </nav>
 
         <div className="border-border/60 mt-auto space-y-0.5 border-t p-1 pt-2 text-sm">
+          <Link
+            href={`/w/${workspace.id}/chat`}
+            onClick={() => setOpen(false)}
+            className={cn(
+              "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5",
+              pathname.startsWith(`/w/${workspace.id}/chat`) &&
+                "bg-primary/10 text-primary",
+            )}
+          >
+            <MessageCircle className="size-4" />
+            Chat
+            {chatUnreadCount > 0 && (
+              <span className="bg-destructive text-destructive-foreground ml-auto grid min-w-4.5 place-items-center rounded-full px-1 text-[10px] leading-4 font-medium">
+                {chatUnreadCount > 9 ? "9+" : chatUnreadCount}
+              </span>
+            )}
+          </Link>
           <Link
             href={`/w/${workspace.id}/hours`}
             data-tour="tour-hours"
