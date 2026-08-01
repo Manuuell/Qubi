@@ -1,14 +1,18 @@
 "use client";
 
-import { useRef, useState, useTransition, type FormEvent } from "react";
-import { Paperclip, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { MentionTextarea } from "@/features/mentions/mention-textarea";
+import { useRouter } from "next/navigation";
+import { ProgressComposer } from "@/features/time/components/progress-composer";
+import { useOptionalTimerWidget } from "@/features/time/timer-widget-context";
 import type { MentionMember } from "@/features/mentions/mentions";
 
-// Formulario genérico reutilizado para comentarios normales, avances (kind
-// PROGRESS) y feedback del manager (kind REVIEW_FEEDBACK) — solo cambia la
-// server action que recibe.
+// Formulario reutilizado para comentarios normales, avances (kind PROGRESS) y
+// feedback del manager (kind REVIEW_FEEDBACK) — solo cambia la server action.
+// Admite texto con menciones y enlaces, y evidencia pegada, arrastrada o
+// elegida del disco (cualquier tipo de archivo).
+//
+// Si la persona tiene el cronómetro corriendo SOBRE ESTA MISMA TAREA, escribir
+// aquí entra en modo "documentando": según la política del proyecto/tarea el
+// reloj se pausa o pasa a contar la mitad, y vuelve a la normalidad al guardar.
 export function TaskNoteForm({
   taskId,
   workspaceId,
@@ -16,7 +20,6 @@ export function TaskNoteForm({
   action,
   placeholder,
   submitLabel,
-  attachmentLabel = "Adjuntar captura",
   members,
 }: {
   taskId: string;
@@ -25,80 +28,31 @@ export function TaskNoteForm({
   action: (formData: FormData) => Promise<void>;
   placeholder: string;
   submitLabel: string;
-  attachmentLabel?: string;
   members: MentionMember[];
 }) {
-  const textRef = useRef<HTMLTextAreaElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const timerCtx = useOptionalTimerWidget();
+  const timingThisTask = timerCtx?.timer?.issueId === taskId;
 
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    const body = textRef.current?.value ?? "";
-    const file = fileRef.current?.files?.[0] ?? null;
-    if (!body.trim() && !file) return;
-    setError(null);
-    startTransition(async () => {
-      try {
+  return (
+    <ProgressComposer
+      members={members}
+      placeholder={placeholder}
+      submitLabel={submitLabel}
+      onDirty={() => {
+        if (timingThisTask) void timerCtx?.beginProgress();
+      }}
+      onSubmit={async (body, files) => {
         const fd = new FormData();
         fd.set("taskId", taskId);
         fd.set("workspaceId", workspaceId);
         fd.set("projectId", projectId);
         fd.set("body", body);
-        if (file) fd.set("file", file);
+        for (const file of files) fd.append("files", file);
         await action(fd);
-        if (textRef.current) textRef.current.value = "";
-        if (fileRef.current) fileRef.current.value = "";
-        setFileName(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "No se pudo guardar.");
-      }
-    });
-  }
-
-  return (
-    <form onSubmit={submit} className="space-y-2">
-      <MentionTextarea
-        ref={textRef}
-        members={members}
-        rows={3}
-        placeholder={placeholder}
-        className="bg-background focus:ring-ring transition-ios w-full rounded-2xl border p-3 text-sm outline-none focus:ring-2"
-      />
-      <div className="flex items-center justify-between gap-2">
-        <label className="text-muted-foreground hover:text-foreground transition-ios flex cursor-pointer items-center gap-1.5 text-xs">
-          <Paperclip className="size-3.5" />
-          {fileName ?? attachmentLabel}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
-          />
-        </label>
-        <div className="flex items-center gap-2">
-          {fileName && (
-            <button
-              type="button"
-              onClick={() => {
-                if (fileRef.current) fileRef.current.value = "";
-                setFileName(null);
-              }}
-              aria-label="Quitar adjunto"
-              className="text-muted-foreground hover:text-destructive transition-ios"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
-          <Button type="submit" disabled={pending}>
-            {submitLabel}
-          </Button>
-        </div>
-      </div>
-      {error && <p className="text-destructive text-xs">{error}</p>}
-    </form>
+        if (timingThisTask) await timerCtx?.endProgress();
+        router.refresh();
+      }}
+    />
   );
 }

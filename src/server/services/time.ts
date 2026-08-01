@@ -1,5 +1,17 @@
 import { prisma } from "@/lib/db";
-import { ProjectStatus } from "@/generated/prisma/enums";
+import {
+  IssueCommentKind,
+  IssueStatus,
+  Priority,
+  ProgressTimerPolicy,
+  ProjectStatus,
+} from "@/generated/prisma/enums";
+import {
+  billableMinutes,
+  creditedProgressMinutes,
+  effectiveProgressPolicy,
+} from "@/features/time/timer-rules";
+import { addTaskComment, startTask } from "@/server/services/task";
 import {
   addDaysToKey,
   dateToLocalKey,
@@ -370,16 +382,19 @@ export async function getMonthEntriesForExport(
 // ── Temporizador (cronómetro) ───────────────────────────────────────────────
 
 // SUMA minutos a las horas de un proyecto+día (a diferencia de setTimesheetHours
-// que las fija). Lo usa el temporizador al detenerse.
+// que las fija). Lo usa el temporizador al detenerse. Los minutos quedan
+// imputados a la tarea concreta que se cronometró, que es lo que alimenta las
+// "horas invertidas" del detalle de tarea.
 async function addTimeEntryMinutes(
   projectId: string,
   userId: string,
   date: Date,
   minutesToAdd: number,
+  issueId: string | null,
 ) {
   if (minutesToAdd <= 0) return;
   const existing = await prisma.timeEntry.findFirst({
-    where: { projectId, userId, date },
+    where: { projectId, userId, date, issueId },
     select: { id: true, minutes: true },
   });
   if (existing) {
@@ -389,7 +404,7 @@ async function addTimeEntryMinutes(
     });
   } else {
     await prisma.timeEntry.create({
-      data: { projectId, userId, date, minutes: minutesToAdd },
+      data: { projectId, userId, date, minutes: minutesToAdd, issueId },
     });
   }
 }
@@ -399,13 +414,19 @@ export type RunningTimerInfo = {
   projectId: string;
   projectName: string;
   workspaceId: string;
+  issueId: string;
+  issueNumber: number;
+  issueTitle: string;
+  progressPolicy: ProgressTimerPolicy; // qué hace el reloj al documentar
+  progressStartedAt: Date | null; // documentando desde (null = trabajando)
   startedAt: Date; // desde cuándo corre el tramo actual (cambia al reanudar)
   accumulatedMinutes: number; // ya acumulado antes del tramo actual
   pausedAt: Date | null;
 };
 
 // Temporizador activo del usuario (global, uno por persona). Incluye el espacio
-// del proyecto para que la UI sepa si pertenece al espacio que se está viendo.
+// del proyecto para que la UI sepa si pertenece al espacio que se está viendo,
+// y la tarea a la que está ligado (siempre hay una).
 export async function getRunningTimer(
   userId: string,
 ): Promise<RunningTimerInfo | null> {
@@ -416,7 +437,23 @@ export async function getRunningTimer(
       startedAt: true,
       accumulatedMinutes: true,
       pausedAt: true,
-      project: { select: { id: true, name: true, workspaceId: true } },
+      progressStartedAt: true,
+      project: {
+        select: {
+          id: true,
+          name: true,
+          workspaceId: true,
+          progressTimerPolicy: true,
+        },
+      },
+      issue: {
+        select: {
+          id: true,
+          number: true,
+          title: true,
+          progressTimerPolicy: true,
+        },
+      },
     },
   });
   if (!timer) return null;
@@ -425,19 +462,71 @@ export async function getRunningTimer(
     projectId: timer.project.id,
     projectName: timer.project.name,
     workspaceId: timer.project.workspaceId,
+    issueId: timer.issue.id,
+    issueNumber: timer.issue.number,
+    issueTitle: timer.issue.title,
+    progressPolicy: effectiveProgressPolicy(
+      timer.project.progressTimerPolicy,
+      timer.issue.progressTimerPolicy,
+    ),
+    progressStartedAt: timer.progressStartedAt,
     startedAt: timer.startedAt,
     accumulatedMinutes: timer.accumulatedMinutes,
     pausedAt: timer.pausedAt,
   };
 }
 
-// Inicia un temporizador para un proyecto. Falla si ya hay uno activo. Crea
-// además una WorkSession: es el registro histórico de la sesión (hoy no
-// existía ninguno; el RunningTimer se borraba sin dejar rastro al detenerse).
+export type TimeableTask = {
+  id: string;
+  number: number;
+  title: string;
+  status: IssueStatus;
+  priority: Priority;
+  dueDate: Date | null;
+};
+
+// Tareas que se pueden cronometrar en un proyecto: pendientes o ya en marcha
+// (las terminadas no). Se ordenan poniendo primero las que ya están en curso.
+export async function listTimeableTasks(
+  workspaceId: string,
+  userId: string,
+  projectId: string,
+): Promise<TimeableTask[]> {
+  await assertWorkspaceMember(workspaceId, userId);
+  const tasks = await prisma.issue.findMany({
+    where: {
+      workspaceId,
+      projectId,
+      status: { in: [IssueStatus.IN_PROGRESS, IssueStatus.TODO] },
+    },
+    select: {
+      id: true,
+      number: true,
+      title: true,
+      status: true,
+      priority: true,
+      dueDate: true,
+    },
+    orderBy: [{ status: "asc" }, { dueDate: "asc" }, { number: "asc" }],
+  });
+  // IssueStatus.TODO ordena antes que IN_PROGRESS alfabéticamente, así que se
+  // reordena aquí para que lo que ya está en marcha quede arriba.
+  return [
+    ...tasks.filter((t) => t.status === IssueStatus.IN_PROGRESS),
+    ...tasks.filter((t) => t.status !== IssueStatus.IN_PROGRESS),
+  ];
+}
+
+// Inicia un temporizador sobre una TAREA concreta de un proyecto (siempre hay
+// que decir en qué se va a trabajar). Falla si ya hay uno activo. Crea además
+// una WorkSession: es el registro histórico de la sesión.
+// Si la tarea estaba "Por hacer" pasa a "En curso", igual que si se hubiera
+// pulsado "Empezar a hacer" (queda su evento en el historial de estados).
 export async function startTimer(
   workspaceId: string,
   userId: string,
   projectId: string,
+  issueId: string,
 ) {
   await assertWorkspaceMember(workspaceId, userId);
   const project = await prisma.project.findFirst({
@@ -446,14 +535,31 @@ export async function startTimer(
   });
   if (!project) throw new Error("Proyecto no encontrado");
 
+  const issue = await prisma.issue.findFirst({
+    where: { id: issueId, projectId, workspaceId },
+    select: { id: true, status: true },
+  });
+  if (!issue) {
+    throw new Error("Elige una tarea de este proyecto para cronometrar");
+  }
+  if (issue.status === IssueStatus.DONE) {
+    throw new Error(
+      "Esa tarea ya está terminada: elige una pendiente o en marcha",
+    );
+  }
+
   const existing = await prisma.runningTimer.findUnique({ where: { userId } });
   if (existing) throw new Error("Ya tienes un temporizador en marcha");
 
+  if (issue.status === IssueStatus.TODO) {
+    await startTask(issue.id, userId);
+  }
+
   const session = await prisma.workSession.create({
-    data: { userId, projectId, workspaceId },
+    data: { userId, projectId, workspaceId, issueId: issue.id },
   });
   await prisma.runningTimer.create({
-    data: { userId, projectId, sessionId: session.id },
+    data: { userId, projectId, issueId: issue.id, sessionId: session.id },
   });
   return session.id;
 }
@@ -482,8 +588,79 @@ export async function resumeTimer(userId: string) {
   });
 }
 
+// ── Documentar un avance sin perder (o perdiendo a medias) el tiempo ────────
+
+// Política efectiva del cronómetro en marcha (la de la tarea manda sobre la
+// del proyecto).
+async function policyOfRunningTimer(timer: {
+  projectId: string;
+  issueId: string;
+}) {
+  const [project, issue] = await Promise.all([
+    prisma.project.findUniqueOrThrow({
+      where: { id: timer.projectId },
+      select: { progressTimerPolicy: true },
+    }),
+    prisma.issue.findUniqueOrThrow({
+      where: { id: timer.issueId },
+      select: { progressTimerPolicy: true },
+    }),
+  ]);
+  return effectiveProgressPolicy(
+    project.progressTimerPolicy,
+    issue.progressTimerPolicy,
+  );
+}
+
+// La persona empieza a escribir su avance: se congela lo corrido hasta ahora y
+// se marca el inicio del modo "documentando". Con PAUSE ese rato no cuenta;
+// con HALF contará la mitad al terminar.
+export async function beginTimerProgress(userId: string) {
+  const timer = await prisma.runningTimer.findUnique({ where: { userId } });
+  if (!timer || timer.progressStartedAt) return;
+
+  const runningMinutes = timer.pausedAt
+    ? 0
+    : Math.max(0, Math.round((Date.now() - timer.startedAt.getTime()) / 60000));
+  await prisma.runningTimer.update({
+    where: { userId },
+    data: {
+      accumulatedMinutes: timer.accumulatedMinutes + runningMinutes,
+      progressStartedAt: new Date(),
+      pausedAt: timer.pausedAt ?? new Date(),
+    },
+  });
+  return policyOfRunningTimer(timer);
+}
+
+// Termina de documentar: acredita lo que corresponda según la política y
+// vuelve a poner el reloj en marcha (salvo que estuviera pausado a mano).
+export async function endTimerProgress(userId: string, wasPaused = false) {
+  const timer = await prisma.runningTimer.findUnique({ where: { userId } });
+  if (!timer || !timer.progressStartedAt) return;
+
+  const policy = await policyOfRunningTimer(timer);
+  const elapsed = Math.round(
+    (Date.now() - timer.progressStartedAt.getTime()) / 60000,
+  );
+  const credited = creditedProgressMinutes(elapsed, policy);
+
+  await prisma.runningTimer.update({
+    where: { userId },
+    data: {
+      accumulatedMinutes: timer.accumulatedMinutes + credited,
+      progressStartedAt: null,
+      startedAt: new Date(),
+      pausedAt: wasPaused ? new Date() : null,
+    },
+  });
+  return { policy, credited };
+}
+
 // Detiene el temporizador, suma el tiempo total (acumulado + tramo en curso)
 // a las horas del día en que empezó la sesión, y cierra la WorkSession.
+// Las sesiones por debajo de MIN_BILLABLE_MINUTES no se imputan a las horas:
+// se guardan marcadas como descartadas (los avances documentados sí quedan).
 export async function stopTimer(userId: string) {
   const timer = await prisma.runningTimer.findUnique({
     where: { userId },
@@ -491,19 +668,50 @@ export async function stopTimer(userId: string) {
   });
   if (!timer) return null;
 
-  const runningMinutes = timer.pausedAt
-    ? 0
-    : Math.max(0, Math.round((Date.now() - timer.startedAt.getTime()) / 60000));
-  const totalMinutes = timer.accumulatedMinutes + runningMinutes;
+  // Si estaba documentando un avance, primero se cierra ese tramo.
+  let progressCredit = 0;
+  if (timer.progressStartedAt) {
+    const policy = await policyOfRunningTimer(timer);
+    progressCredit = creditedProgressMinutes(
+      Math.round((Date.now() - timer.progressStartedAt.getTime()) / 60000),
+      policy,
+    );
+  }
+
+  const runningMinutes =
+    timer.pausedAt || timer.progressStartedAt
+      ? 0
+      : Math.max(
+          0,
+          Math.round((Date.now() - timer.startedAt.getTime()) / 60000),
+        );
+  const totalMinutes =
+    timer.accumulatedMinutes + runningMinutes + progressCredit;
+  const counted = billableMinutes(totalMinutes);
   const date = keyToDbDate(dateToLocalKey(timer.session.startedAt));
 
-  await addTimeEntryMinutes(timer.projectId, userId, date, totalMinutes);
+  await addTimeEntryMinutes(
+    timer.projectId,
+    userId,
+    date,
+    counted,
+    timer.issueId,
+  );
   await prisma.workSession.update({
     where: { id: timer.sessionId },
-    data: { endedAt: new Date(), minutes: totalMinutes },
+    data: {
+      endedAt: new Date(),
+      minutes: totalMinutes,
+      discarded: counted === 0,
+    },
   });
   await prisma.runningTimer.delete({ where: { userId } });
-  return { sessionId: timer.sessionId, minutes: totalMinutes };
+  return {
+    sessionId: timer.sessionId,
+    minutes: totalMinutes,
+    countedMinutes: counted,
+    discarded: counted === 0,
+  };
 }
 
 // Cancela el temporizador sin registrar el tiempo: borra la WorkSession
@@ -514,26 +722,70 @@ export async function cancelTimer(userId: string) {
   await prisma.workSession.delete({ where: { id: timer.sessionId } });
 }
 
-// Avance (nota + captura opcional) registrado durante una sesión de trabajo.
-export async function addWorkSessionNote(
+export type ProgressUpload = {
+  url: string;
+  name: string;
+  mimeType: string;
+  size: number;
+};
+
+// Avance documentado durante una sesión de cronómetro. La evidencia es de la
+// TAREA: se guarda como comentario de tipo PROGRESS con sus archivos adjuntos
+// (eso es lo que ve el manager y lo que habilita marcar la tarea como Hecha) y
+// se deja una nota enlazada en la sesión para la pestaña "Avances".
+export async function addSessionProgress(
   sessionId: string,
   userId: string,
   body: string,
-  screenshotUrl?: string | null,
+  files: ProgressUpload[] = [],
 ) {
   const session = await prisma.workSession.findUnique({
     where: { id: sessionId },
-    select: { userId: true },
+    select: { userId: true, issueId: true },
   });
   if (!session || session.userId !== userId) {
     throw new Error("Sesión no encontrada");
   }
   const trimmed = body.trim();
-  if (!trimmed && !screenshotUrl) {
-    throw new Error("Escribe una nota o adjunta una captura");
+  if (!trimmed && files.length === 0) {
+    throw new Error("Escribe tu avance o adjunta un archivo");
   }
+
+  // La primera imagen se muestra en línea dentro del avance; el resto de
+  // archivos quedan como adjuntos de la tarea.
+  const firstImage = files.find((f) => f.mimeType.startsWith("image/")) ?? null;
+
+  let comment: { id: string } | null = null;
+  if (session.issueId) {
+    comment = await addTaskComment(
+      session.issueId,
+      userId,
+      trimmed,
+      firstImage?.url ?? null,
+      IssueCommentKind.PROGRESS,
+    );
+    if (files.length > 0) {
+      await prisma.issueAttachment.createMany({
+        data: files.map((f) => ({
+          issueId: session.issueId!,
+          commentId: comment!.id,
+          url: f.url,
+          name: f.name,
+          mimeType: f.mimeType,
+          size: f.size,
+          uploadedById: userId,
+        })),
+      });
+    }
+  }
+
   return prisma.workSessionNote.create({
-    data: { sessionId, body: trimmed, screenshotUrl: screenshotUrl ?? null },
+    data: {
+      sessionId,
+      body: trimmed,
+      screenshotUrl: firstImage?.url ?? null,
+      issueCommentId: comment?.id ?? null,
+    },
   });
 }
 
@@ -544,9 +796,12 @@ export type WorkSessionSummary = {
   projectId: string;
   projectName: string;
   projectColor: string | null;
+  issueNumber: number | null;
+  issueTitle: string | null;
   startedAt: Date;
   endedAt: Date | null;
   minutes: number;
+  discarded: boolean; // sesión corta: no se imputó a las horas
   notes: {
     id: string;
     body: string;
@@ -593,6 +848,7 @@ export async function getWorkProgress(
     },
     include: {
       project: { select: { name: true, color: true } },
+      issue: { select: { number: true, title: true } },
       notes: { orderBy: { createdAt: "asc" } },
     },
     orderBy: { startedAt: "desc" },
@@ -605,15 +861,20 @@ export async function getWorkProgress(
     const dk = dateToLocalKey(s.startedAt);
     const bucket = byDay.get(dk);
     if (!bucket) continue;
-    bucket.minutes += s.minutes;
+    // Las sesiones descartadas (demasiado cortas) no suman al total del día,
+    // pero se listan igual para que se vea que existieron.
+    if (!s.discarded) bucket.minutes += s.minutes;
     bucket.sessions.push({
       id: s.id,
       projectId: s.projectId,
       projectName: s.project.name,
       projectColor: s.project.color,
+      issueNumber: s.issue?.number ?? null,
+      issueTitle: s.issue?.title ?? null,
       startedAt: s.startedAt,
       endedAt: s.endedAt,
       minutes: s.minutes,
+      discarded: s.discarded,
       notes: s.notes,
     });
   }

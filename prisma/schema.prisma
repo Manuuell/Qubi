@@ -30,6 +30,14 @@ enum ProjectStatus {
   ARCHIVED
 }
 
+// Qué hace el cronómetro mientras la persona está documentando un avance
+// (escribiendo la nota y adjuntando evidencia). Lo decide el manager al crear
+// el proyecto y se puede afinar tarea por tarea.
+enum ProgressTimerPolicy {
+  PAUSE // se pausa: documentar no suma tiempo
+  HALF // sigue corriendo, pero cuenta la mitad del tiempo
+}
+
 // Prioridad de una tarea.
 enum Priority {
   LOW
@@ -180,6 +188,10 @@ model Project {
   status      ProjectStatus @default(ACTIVE)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+
+  // Política por defecto del cronómetro al documentar avances en este
+  // proyecto; cada tarea puede sobrescribirla (Issue.progressTimerPolicy).
+  progressTimerPolicy ProgressTimerPolicy @default(PAUSE)
 
   workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   tasks         Issue[] // las tareas del proyecto (modelo Issue)
@@ -345,6 +357,9 @@ model Issue {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
+  // null = hereda la política del proyecto (Project.progressTimerPolicy).
+  progressTimerPolicy ProgressTimerPolicy?
+
   workspace     Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   project       Project?           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   author        User?              @relation("IssueAuthor", fields: [authorId], references: [id], onDelete: SetNull)
@@ -411,6 +426,7 @@ model IssueLabel {
 model IssueAttachment {
   id           String   @id @default(cuid())
   issueId      String
+  commentId    String? // si vino adjunto en un avance/comentario, para poder mostrarlo dentro
   url          String
   name         String
   mimeType     String
@@ -418,10 +434,12 @@ model IssueAttachment {
   uploadedById String?
   createdAt    DateTime @default(now())
 
-  issue      Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  uploadedBy User? @relation("IssueAttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  issue      Issue         @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  comment    IssueComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  uploadedBy User?         @relation("IssueAttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
 
   @@index([issueId])
+  @@index([commentId])
 }
 
 // Historial de cambios de estado de una tarea: quién movió qué a qué estado
@@ -470,15 +488,20 @@ model RunningTimer {
   id                 String    @id @default(cuid())
   userId             String    @unique // un solo temporizador activo por usuario
   projectId          String
-  issueId            String? // tarea específica que se está trabajando (opcional)
+  issueId            String // tarea que se está trabajando (obligatoria)
   sessionId          String    @unique
   startedAt          DateTime  @default(now())
   accumulatedMinutes Int       @default(0)
   pausedAt           DateTime?
 
+  // Mientras se documenta un avance el tiempo no corre normal: según la
+  // política (PAUSE / HALF) no suma o suma la mitad. progressStartedAt marca
+  // desde cuándo está en ese modo (null = trabajando normal).
+  progressStartedAt DateTime?
+
   user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  issue   Issue?      @relation(fields: [issueId], references: [id], onDelete: SetNull)
+  issue   Issue       @relation(fields: [issueId], references: [id], onDelete: Cascade)
   session WorkSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
@@ -492,10 +515,14 @@ model WorkSession {
   userId      String
   projectId   String
   workspaceId String
-  issueId     String? // tarea específica en la que se trabajó (opcional)
+  issueId     String? // tarea en la que se trabajó (las sesiones nuevas siempre la llevan)
   startedAt   DateTime  @default(now())
   endedAt     DateTime?
   minutes     Int       @default(0)
+
+  // Sesión demasiado corta (< MIN_BILLABLE_MINUTES): se conserva junto con sus
+  // avances, pero no se imputa a las horas del día.
+  discarded Boolean @default(false)
 
   user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -518,7 +545,12 @@ model WorkSessionNote {
   screenshotUrl String?
   createdAt     DateTime @default(now())
 
-  session WorkSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  // El mismo avance vive como comentario (kind PROGRESS) en la tarea: aquí solo
+  // se guarda el enlace para que la pestaña "Avances" lleve al detalle.
+  issueCommentId String? @unique
+
+  session      WorkSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  issueComment IssueComment? @relation(fields: [issueCommentId], references: [id], onDelete: SetNull)
 
   @@index([sessionId])
 }
@@ -532,9 +564,11 @@ model IssueComment {
   attachmentUrl String?
   createdAt     DateTime         @default(now())
 
-  issue     Issue                  @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  author    User?                  @relation("IssueCommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
-  reactions IssueCommentReaction[]
+  issue       Issue                  @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  author      User?                  @relation("IssueCommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  reactions   IssueCommentReaction[]
+  attachments IssueAttachment[] // archivos subidos junto a este avance/comentario
+  sessionNote WorkSessionNote? // avance creado desde el cronómetro
 
   @@index([issueId])
 }

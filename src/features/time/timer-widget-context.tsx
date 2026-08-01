@@ -11,27 +11,52 @@ import {
 } from "react";
 import type { RunningTimerInfo } from "@/server/services/time";
 import {
-  addWorkSessionNoteAction,
+  addSessionProgressAction,
+  beginTimerProgressAction,
   cancelTimerAction,
+  endTimerProgressAction,
   pauseTimerAction,
   resumeTimerAction,
   startTimerAction,
   stopTimerAction,
 } from "@/server/actions/timer";
 import { TimerWidget } from "@/features/time/components/timer-widget";
+import { TimerNotice } from "@/features/time/components/timer-notice";
+import { shortSessionNotice } from "@/features/time/timer-rules";
+import { hoursLabel } from "@/features/time/week";
 
 type TimerState = RunningTimerInfo | null;
+
+// Resultado de detener el cronómetro: la UI lo usa para avisar cuando la
+// sesión fue demasiado corta y no se guardó como horas.
+export type StopResult = {
+  minutes: number;
+  countedMinutes: number;
+  discarded: boolean;
+} | null;
+
+// Para arrancar basta con decir en qué espacio, proyecto y TAREA se trabaja:
+// el resto (nombre, número, política) lo devuelve el servidor.
+export type TimerTarget = {
+  workspaceId: string;
+  projectId: string;
+  issueId: string;
+};
 
 type TimerWidgetContextValue = {
   timer: TimerState;
   pending: boolean;
   notesCount: number;
-  start: (workspaceId: string, projectId: string, projectName: string) => void;
+  /** El cronómetro está en modo "documentando avance" (pausado o a la mitad). */
+  documenting: boolean;
+  start: (target: TimerTarget) => void;
   pause: () => void;
   resume: () => void;
-  stop: () => void;
+  stop: () => Promise<StopResult>;
   cancel: () => void;
-  addNote: (body: string, file: File | null) => Promise<void>;
+  beginProgress: () => Promise<void>;
+  endProgress: () => Promise<void>;
+  addProgress: (body: string, files: File[]) => Promise<void>;
 };
 
 const TimerWidgetContext = createContext<TimerWidgetContextValue | null>(null);
@@ -40,6 +65,12 @@ export function useTimerWidget() {
   const ctx = useContext(TimerWidgetContext);
   if (!ctx) throw new Error("useTimerWidget debe usarse dentro del provider");
   return ctx;
+}
+
+// Igual que useTimerWidget pero sin reventar fuera del provider: para
+// componentes que también se renderizan en pantallas sin cronómetro.
+export function useOptionalTimerWidget() {
+  return useContext(TimerWidgetContext);
 }
 
 const POSITION_KEY = "qubi:timer-widget:position";
@@ -54,29 +85,23 @@ export function TimerWidgetProvider({
 }) {
   const [timer, setTimer] = useState<TimerState>(initialTimer);
   const [notesCount, setNotesCount] = useState(0);
+  // Si el reloj ya estaba pausado a mano antes de documentar, al terminar debe
+  // seguir pausado en vez de arrancar solo.
+  const [pausedBeforeProgress, setPausedBeforeProgress] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const start = useCallback(
-    (workspaceId: string, projectId: string, projectName: string) => {
-      startTransition(async () => {
-        const { sessionId } = await startTimerAction({
-          workspaceId,
-          projectId,
-        });
-        setNotesCount(0);
-        setTimer({
-          sessionId,
-          projectId,
-          projectName,
-          workspaceId,
-          startedAt: new Date(),
-          accumulatedMinutes: 0,
-          pausedAt: null,
-        });
+  const start = useCallback((target: TimerTarget) => {
+    startTransition(async () => {
+      const running = await startTimerAction({
+        workspaceId: target.workspaceId,
+        projectId: target.projectId,
+        issueId: target.issueId,
       });
-    },
-    [],
-  );
+      setNotesCount(0);
+      setTimer(running);
+    });
+  }, []);
 
   const pause = useCallback(() => {
     if (!timer) return;
@@ -109,14 +134,73 @@ export function TimerWidgetProvider({
     startTransition(() => resumeTimerAction({ workspaceId }));
   }, [timer]);
 
-  const stop = useCallback(() => {
-    if (!timer) return;
+  // Entra en modo documentando: el servidor congela el tiempo corrido y marca
+  // desde cuándo se está escribiendo el avance.
+  const beginProgress = useCallback(async () => {
+    if (!timer || timer.progressStartedAt) return;
+    const now = new Date();
+    setPausedBeforeProgress(Boolean(timer.pausedAt));
+    setTimer((prev) =>
+      prev
+        ? {
+            ...prev,
+            progressStartedAt: now,
+            accumulatedMinutes: prev.pausedAt
+              ? prev.accumulatedMinutes
+              : prev.accumulatedMinutes +
+                Math.max(
+                  0,
+                  Math.round(
+                    (Date.now() - new Date(prev.startedAt).getTime()) / 60000,
+                  ),
+                ),
+          }
+        : prev,
+    );
+    await beginTimerProgressAction();
+  }, [timer]);
+
+  const endProgress = useCallback(async () => {
+    if (!timer?.progressStartedAt) return;
+    const wasPaused = pausedBeforeProgress;
+    const result = await endTimerProgressAction({ wasPaused });
+    setPausedBeforeProgress(false);
+    setTimer((prev) =>
+      prev
+        ? {
+            ...prev,
+            progressStartedAt: null,
+            startedAt: new Date(),
+            pausedAt: wasPaused ? new Date() : null,
+            accumulatedMinutes:
+              prev.accumulatedMinutes + (result?.credited ?? 0),
+          }
+        : prev,
+    );
+  }, [timer, pausedBeforeProgress]);
+
+  const stop = useCallback(async (): Promise<StopResult> => {
+    if (!timer) return null;
     const workspaceId = timer.workspaceId;
-    startTransition(async () => {
-      await stopTimerAction({ workspaceId });
-      setTimer(null);
-      setNotesCount(0);
-    });
+    const result = await stopTimerAction({ workspaceId });
+    setTimer(null);
+    setNotesCount(0);
+    setPausedBeforeProgress(false);
+    if (result) {
+      // El aviso vive fuera del widget porque el widget desaparece al parar.
+      setNotice(
+        result.discarded
+          ? shortSessionNotice(result.minutes)
+          : `Sesión guardada: ${hoursLabel(result.countedMinutes)} en ${timer.projectName}.`,
+      );
+    }
+    return result
+      ? {
+          minutes: result.minutes,
+          countedMinutes: result.countedMinutes,
+          discarded: result.discarded,
+        }
+      : null;
   }, [timer]);
 
   const cancel = useCallback(() => {
@@ -129,15 +213,15 @@ export function TimerWidgetProvider({
     });
   }, [timer]);
 
-  const addNote = useCallback(
-    async (body: string, file: File | null) => {
+  const addProgress = useCallback(
+    async (body: string, files: File[]) => {
       if (!timer) return;
       const fd = new FormData();
       fd.set("sessionId", timer.sessionId);
       fd.set("workspaceId", timer.workspaceId);
       fd.set("body", body);
-      if (file) fd.set("file", file);
-      await addWorkSessionNoteAction(fd);
+      for (const file of files) fd.append("files", file);
+      await addSessionProgressAction(fd);
       setNotesCount((n) => n + 1);
     },
     [timer],
@@ -149,16 +233,22 @@ export function TimerWidgetProvider({
         timer,
         pending,
         notesCount,
+        documenting: Boolean(timer?.progressStartedAt),
         start,
         pause,
         resume,
         stop,
         cancel,
-        addNote,
+        beginProgress,
+        endProgress,
+        addProgress,
       }}
     >
       {children}
       {timer && <TimerWidget />}
+      {notice && (
+        <TimerNotice message={notice} onClose={() => setNotice(null)} />
+      )}
     </TimerWidgetContext.Provider>
   );
 }

@@ -4,6 +4,7 @@ import {
   IssueType,
   IssueCommentKind,
   Priority,
+  ProgressTimerPolicy,
   ProjectStatus,
 } from "@/generated/prisma/enums";
 import {
@@ -400,7 +401,14 @@ export async function getTaskDetail(
   const issue = await prisma.issue.findUnique({
     where: { workspaceId_number: { workspaceId, number } },
     include: {
-      project: { select: { id: true, name: true, color: true } },
+      project: {
+        select: {
+          id: true,
+          name: true,
+          color: true,
+          progressTimerPolicy: true,
+        },
+      },
       author: { select: personSelect },
       assignees: { select: { user: { select: personSelect } } },
       labels: {
@@ -420,6 +428,8 @@ export async function getTaskDetail(
         include: {
           author: { select: personSelect },
           reactions: { include: { user: { select: personSelect } } },
+          // Evidencia adjunta al propio avance (capturas pegadas, documentos…).
+          attachments: { orderBy: { createdAt: "asc" } },
         },
       },
       timeEntries: { select: { minutes: true, userId: true, date: true } },
@@ -522,6 +532,62 @@ export async function addTaskComment(
   }
 
   return comment;
+}
+
+export type TaskUpload = {
+  url: string;
+  name: string;
+  mimeType: string;
+  size: number;
+};
+
+// Avance con evidencia: nota + varios archivos de cualquier tipo (capturas
+// pegadas desde el portapapeles, PDFs, hojas de cálculo…). Los archivos quedan
+// colgados del avance y también en la pestaña "Archivos" de la tarea.
+export async function addTaskProgress(
+  taskId: string,
+  userId: string,
+  body: string,
+  files: TaskUpload[] = [],
+  kind: IssueCommentKind = IssueCommentKind.PROGRESS,
+) {
+  const firstImage = files.find((f) => f.mimeType.startsWith("image/")) ?? null;
+  const comment = await addTaskComment(
+    taskId,
+    userId,
+    body,
+    firstImage?.url ?? null,
+    kind,
+  );
+  if (files.length > 0) {
+    await prisma.issueAttachment.createMany({
+      data: files.map((f) => ({
+        issueId: taskId,
+        commentId: comment.id,
+        url: f.url,
+        name: f.name,
+        mimeType: f.mimeType,
+        size: f.size,
+        uploadedById: userId,
+      })),
+    });
+  }
+  return comment;
+}
+
+// Qué hace el cronómetro mientras se documenta un avance de ESTA tarea.
+// null vuelve a heredar la política del proyecto. Solo el manager decide.
+export async function setTaskProgressPolicy(
+  taskId: string,
+  userId: string,
+  policy: ProgressTimerPolicy | null,
+) {
+  const task = await assertTaskAccess(taskId, userId);
+  await assertWorkspaceAdmin(task.workspaceId, userId);
+  return prisma.issue.update({
+    where: { id: taskId },
+    data: { progressTimerPolicy: policy },
+  });
 }
 
 // Alterna una reacción del usuario a un comentario: si ya la puso, la quita;

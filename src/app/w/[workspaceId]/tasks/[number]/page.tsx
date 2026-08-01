@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Clock, FolderOpen } from "lucide-react";
+import { ArrowLeft, Clock, FolderOpen, Paperclip } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getTaskDetail } from "@/server/services/task";
 import { getWorkspaceMembers } from "@/server/services/member";
@@ -30,6 +30,9 @@ import { CommentReactions } from "@/features/task/components/comment-reactions";
 import { MentionText } from "@/features/mentions/mention-text";
 import { StartTaskButton } from "@/features/task/components/start-task-button";
 import { DeleteTaskButton } from "@/features/task/components/delete-task-button";
+import { TaskProgressPolicySelect } from "@/features/task/components/task-progress-policy-select";
+import { TimeTaskButton } from "@/features/time/components/time-task-button";
+import { PROGRESS_POLICY_LABEL } from "@/features/time/timer-rules";
 import {
   addTaskCommentAction,
   addTaskProgressAction,
@@ -63,6 +66,13 @@ type CommentRow = {
   reactions: {
     emoji: string;
     user: { id: string; name: string | null; email: string };
+  }[];
+  attachments: {
+    id: string;
+    url: string;
+    name: string;
+    mimeType: string;
+    size: number;
   }[];
 };
 
@@ -116,6 +126,27 @@ function NoteCard({
           className="mt-1 max-h-64 w-auto rounded-xl border object-contain"
         />
       )}
+      {/* Evidencia que no es la captura principal: documentos, más imágenes… */}
+      {comment.attachments.filter((a) => a.url !== comment.attachmentUrl)
+        .length > 0 && (
+        <ul className="mt-1 flex flex-wrap gap-1.5">
+          {comment.attachments
+            .filter((a) => a.url !== comment.attachmentUrl)
+            .map((a) => (
+              <li key={a.id}>
+                <a
+                  href={a.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="glass hover:bg-accent transition-ios flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px]"
+                >
+                  <Paperclip className="size-3" />
+                  <span className="max-w-40 truncate">{a.name}</span>
+                </a>
+              </li>
+            ))}
+        </ul>
+      )}
       <CommentReactions
         commentId={comment.id}
         reactions={comment.reactions}
@@ -134,10 +165,14 @@ const dateTimeFmt = new Intl.DateTimeFormat("es-ES", {
 
 export default async function TaskDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workspaceId: string; number: string }>;
+  searchParams: Promise<{ avance?: string }>;
 }) {
   const { workspaceId, number } = await params;
+  // El botón de cámara del cronómetro entra directo a documentar el avance.
+  const { avance } = await searchParams;
   const user = await getCurrentUser();
 
   const task = await getTaskDetail(workspaceId, Number(number), user.id);
@@ -221,15 +256,28 @@ export default async function TaskDetailPage({
         <span className="text-muted-foreground text-xl">#{task.number}</span>
       </div>
 
-      {task.status === IssueStatus.TODO && (
-        <div className="mt-4">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        {task.status === IssueStatus.TODO && (
           <StartTaskButton
             taskId={task.id}
             workspaceId={workspaceId}
             projectId={projectId}
           />
-        </div>
-      )}
+        )}
+        {/* El cronómetro siempre va ligado a una tarea concreta: desde aquí se
+            arranca sobre esta, esté pendiente o ya en curso. */}
+        {task.project && task.status !== IssueStatus.DONE && (
+          <TimeTaskButton
+            workspaceId={workspaceId}
+            projectId={task.project.id}
+            issueId={task.id}
+            issueNumber={task.number}
+            title={task.title}
+            projectName={task.project.name}
+            isTodo={task.status === IssueStatus.TODO}
+          />
+        )}
+      </div>
 
       <Card
         variant="glass"
@@ -298,6 +346,30 @@ export default async function TaskDetailPage({
             dueDate={task.dueDate}
           />
         </Field>
+        {task.project && (
+          <div className="sm:col-span-2">
+            <Field label="Cronómetro al documentar avances">
+              {isAdmin ? (
+                <TaskProgressPolicySelect
+                  taskId={task.id}
+                  workspaceId={workspaceId}
+                  projectId={projectId}
+                  policy={task.progressTimerPolicy}
+                  projectPolicy={task.project.progressTimerPolicy}
+                />
+              ) : (
+                <span className="text-sm">
+                  {
+                    PROGRESS_POLICY_LABEL[
+                      task.progressTimerPolicy ??
+                        task.project.progressTimerPolicy
+                    ]
+                  }
+                </span>
+              )}
+            </Field>
+          </div>
+        )}
         <div className="sm:col-span-2">
           <Field label="Etiquetas">
             <TaskLabelsEditor
@@ -340,7 +412,11 @@ export default async function TaskDetailPage({
         )}
       </p>
 
-      <SegmentedControl defaultValue="resumen" className="mt-8">
+      <SegmentedControl
+        defaultValue={avance ? "avances" : "resumen"}
+        className="mt-8"
+        id="avances"
+      >
         <SegmentedControlList>
           <SegmentedControlTab value="resumen">Resumen</SegmentedControlTab>
           <SegmentedControlTab value="avances">
@@ -386,7 +462,6 @@ export default async function TaskDetailPage({
             action={addTaskProgressAction}
             placeholder="Ej: quedó listo el formulario y las validaciones…"
             submitLabel="Guardar avance"
-            attachmentLabel="Adjuntar captura"
             members={memberOptions}
           />
           {isAdmin && (
@@ -397,7 +472,6 @@ export default async function TaskDetailPage({
               action={addTaskReviewFeedbackAction}
               placeholder="Feedback sobre los avances (visible para los responsables)…"
               submitLabel="Enviar feedback"
-              attachmentLabel="Adjuntar archivo"
               members={memberOptions}
             />
           )}

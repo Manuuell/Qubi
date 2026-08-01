@@ -14,13 +14,18 @@ import {
 
 // Confirmación previa a iniciar el cronómetro: "¿listo para iniciar
 // producción?", con una animación tipo "en vivo" (punto pulsante + cuenta
-// regresiva) antes de arrancar.
+// regresiva) antes de arrancar. Siempre deja claro en qué TAREA se va a
+// trabajar, y avisa si esa tarea va a pasar de "Por hacer" a "En curso".
 export function StartTimerDialog({
   projectName,
+  taskTitle,
+  willStartTask = false,
   onConfirm,
   trigger,
 }: {
   projectName: string;
+  taskTitle?: string;
+  willStartTask?: boolean;
   onConfirm: () => void;
   trigger: React.ReactNode;
 }) {
@@ -39,9 +44,21 @@ export function StartTimerDialog({
         <DialogHeader className="items-center">
           <DialogTitle>¿Listo para iniciar producción?</DialogTitle>
           <DialogDescription>
-            Vas a empezar a cronometrar tiempo en{" "}
+            Vas a cronometrar{" "}
+            {taskTitle ? (
+              <span className="text-foreground font-medium">{taskTitle}</span>
+            ) : (
+              "tu trabajo"
+            )}{" "}
+            en{" "}
             <span className="text-foreground font-medium">{projectName}</span>.
             El widget flotante te acompañará mientras trabajas.
+            {willStartTask && (
+              <>
+                {" "}
+                La tarea pasará de <em>Por hacer</em> a <em>En curso</em>.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="sm:justify-center">

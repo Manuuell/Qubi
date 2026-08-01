@@ -1,4 +1,4 @@
-import { Camera } from "lucide-react";
+import { Camera, TriangleAlert } from "lucide-react";
 import type { DayProgress } from "@/server/services/time";
 import {
   WEEKDAY_LABELS,
@@ -6,6 +6,8 @@ import {
   hoursLabel,
   todayKey,
 } from "@/features/time/week";
+import { MIN_BILLABLE_MINUTES } from "@/features/time/timer-rules";
+import { MentionText } from "@/features/mentions/mention-text";
 import { Card } from "@/components/ui/card";
 
 const timeFmt = new Intl.DateTimeFormat("es-ES", {
@@ -61,6 +63,11 @@ export function DailyProgress({ days }: { days: DayProgress[] }) {
                       <span className="truncate text-sm font-medium">
                         {s.projectName}
                       </span>
+                      {s.issueNumber != null && (
+                        <span className="text-muted-foreground min-w-0 truncate text-xs">
+                          · #{s.issueNumber} {s.issueTitle}
+                        </span>
+                      )}
                     </div>
                     <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
                       {timeFmt.format(new Date(s.startedAt))}
@@ -69,13 +76,21 @@ export function DailyProgress({ days }: { days: DayProgress[] }) {
                       {hoursLabel(s.minutes)} h
                     </span>
                   </div>
+                  {/* Sesión demasiado corta: quedó el avance, no las horas. */}
+                  {s.discarded && (
+                    <p className="text-muted-foreground flex items-center gap-1.5 pl-4.5 text-xs">
+                      <TriangleAlert className="size-3 text-amber-500" />
+                      Sesión de menos de {MIN_BILLABLE_MINUTES} min: no cuenta
+                      como horas trabajadas.
+                    </p>
+                  )}
                   {s.notes.length > 0 && (
                     <div className="space-y-2 pl-4.5">
                       {s.notes.map((n) => (
                         <div key={n.id} className="space-y-1.5">
                           {n.body && (
                             <p className="text-muted-foreground text-sm whitespace-pre-wrap">
-                              {n.body}
+                              <MentionText body={n.body} />
                             </p>
                           )}
                           {n.screenshotUrl && (

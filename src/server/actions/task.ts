@@ -7,6 +7,7 @@ import {
   IssueType,
   IssueCommentKind,
   Priority,
+  ProgressTimerPolicy,
 } from "@/generated/prisma/enums";
 import * as taskService from "@/server/services/task";
 import { uploadFile } from "@/lib/storage";
@@ -195,48 +196,65 @@ export async function linkTaskPageAction(input: {
   revalidateProject(input.workspaceId, input.projectId);
 }
 
-async function extractAttachment(formData: FormData) {
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) return null;
-  if (!file.type.startsWith("image/")) {
-    throw new Error("El adjunto debe ser una imagen.");
-  }
-  if (file.size > MAX_ATTACHMENT_BYTES) {
-    throw new Error("La imagen no puede superar 8 MB.");
-  }
-  return uploadFile(file);
-}
-
 export async function addTaskCommentAction(formData: FormData) {
   const taskId = String(formData.get("taskId") ?? "");
   const workspaceId = String(formData.get("workspaceId") ?? "");
   const projectId = String(formData.get("projectId") ?? "");
   const body = String(formData.get("body") ?? "");
-  const attachmentUrl = await extractAttachment(formData);
+  const uploads = await extractUploads(formData);
 
-  if (!body.trim() && !attachmentUrl) return;
+  if (!body.trim() && uploads.length === 0) return;
   const user = await getCurrentUser();
-  await taskService.addTaskComment(taskId, user.id, body, attachmentUrl);
+  await taskService.addTaskProgress(
+    taskId,
+    user.id,
+    body,
+    uploads,
+    IssueCommentKind.COMMENT,
+  );
   revalidateProject(workspaceId, projectId);
 }
 
-// Avance documentado mientras la tarea está en curso (nota + captura opcional).
+const MAX_FILES_PER_NOTE = 5;
+
+// Sube los archivos que vengan en el campo "files" (capturas pegadas del
+// portapapeles, documentos arrastrados…). Acepta cualquier tipo.
+async function extractUploads(formData: FormData) {
+  const files = formData
+    .getAll("files")
+    .filter((f): f is File => f instanceof File && f.size > 0);
+  if (files.length > MAX_FILES_PER_NOTE) {
+    throw new Error(
+      `Puedes adjuntar hasta ${MAX_FILES_PER_NOTE} archivos por avance.`,
+    );
+  }
+  const uploads: taskService.TaskUpload[] = [];
+  for (const file of files) {
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      throw new Error(`"${file.name}" supera los 8 MB.`);
+    }
+    uploads.push({
+      url: await uploadFile(file),
+      name: file.name,
+      mimeType: file.type || "application/octet-stream",
+      size: file.size,
+    });
+  }
+  return uploads;
+}
+
+// Avance documentado mientras la tarea está en curso: texto (con menciones y
+// enlaces) + evidencia adjunta.
 export async function addTaskProgressAction(formData: FormData) {
   const taskId = String(formData.get("taskId") ?? "");
   const workspaceId = String(formData.get("workspaceId") ?? "");
   const projectId = String(formData.get("projectId") ?? "");
   const body = String(formData.get("body") ?? "");
-  const attachmentUrl = await extractAttachment(formData);
+  const uploads = await extractUploads(formData);
 
-  if (!body.trim() && !attachmentUrl) return;
+  if (!body.trim() && uploads.length === 0) return;
   const user = await getCurrentUser();
-  await taskService.addTaskComment(
-    taskId,
-    user.id,
-    body,
-    attachmentUrl,
-    IssueCommentKind.PROGRESS,
-  );
+  await taskService.addTaskProgress(taskId, user.id, body, uploads);
   revalidateProject(workspaceId, projectId);
 }
 
@@ -246,18 +264,31 @@ export async function addTaskReviewFeedbackAction(formData: FormData) {
   const workspaceId = String(formData.get("workspaceId") ?? "");
   const projectId = String(formData.get("projectId") ?? "");
   const body = String(formData.get("body") ?? "");
-  const attachmentUrl = await extractAttachment(formData);
+  const uploads = await extractUploads(formData);
 
-  if (!body.trim() && !attachmentUrl) return;
+  if (!body.trim() && uploads.length === 0) return;
   const user = await getCurrentUser();
-  await taskService.addTaskComment(
+  await taskService.addTaskProgress(
     taskId,
     user.id,
     body,
-    attachmentUrl,
+    uploads,
     IssueCommentKind.REVIEW_FEEDBACK,
   );
   revalidateProject(workspaceId, projectId);
+}
+
+// Solo el manager: decide si el cronómetro se pausa o cuenta la mitad
+// mientras se documenta un avance de esta tarea (null = como el proyecto).
+export async function setTaskProgressPolicyAction(input: {
+  taskId: string;
+  workspaceId: string;
+  projectId: string;
+  policy: ProgressTimerPolicy | null;
+}) {
+  const user = await getCurrentUser();
+  await taskService.setTaskProgressPolicy(input.taskId, user.id, input.policy);
+  revalidateProject(input.workspaceId, input.projectId);
 }
 
 export async function addTaskAttachmentAction(formData: FormData) {

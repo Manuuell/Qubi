@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { ProjectStatus } from "@/generated/prisma/enums";
+import { ProgressTimerPolicy, ProjectStatus } from "@/generated/prisma/enums";
 
 // Colores por defecto; rotan según el nº de proyectos del espacio.
 const PALETTE = [
@@ -40,10 +40,13 @@ export function getProject(projectId: string, userId: string) {
   });
 }
 
+// Al crear el proyecto, el manager decide qué hace el cronómetro de su gente
+// mientras documenta avances (se puede afinar luego por tarea).
 export async function createProject(
   workspaceId: string,
   userId: string,
   name: string,
+  progressTimerPolicy: ProgressTimerPolicy = ProgressTimerPolicy.PAUSE,
 ) {
   await assertWorkspaceAccess(workspaceId, userId);
   const count = await prisma.project.count({ where: { workspaceId } });
@@ -52,7 +55,23 @@ export async function createProject(
       workspaceId,
       name: name.trim() || "Nuevo proyecto",
       color: PALETTE[count % PALETTE.length],
+      progressTimerPolicy,
     },
+  });
+}
+
+// Cambia la política por defecto del proyecto (solo manager: la comprobación
+// de rol la hace la server action).
+export async function setProjectProgressPolicy(
+  projectId: string,
+  userId: string,
+  progressTimerPolicy: ProgressTimerPolicy,
+) {
+  const project = await getProject(projectId, userId);
+  if (!project) throw new Error("Proyecto no encontrado");
+  return prisma.project.update({
+    where: { id: projectId },
+    data: { progressTimerPolicy },
   });
 }
 
