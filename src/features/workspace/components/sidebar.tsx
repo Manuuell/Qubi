@@ -245,28 +245,31 @@ export function Sidebar({
             ))
           )}
 
-          <p className="text-muted-foreground mt-3 px-3 py-1 text-[11px] font-medium tracking-wide uppercase">
-            Bases de datos
-          </p>
-          {databaseTree.length === 0 ? (
-            <p className="text-muted-foreground px-3 py-4 text-xs">
-              Sin bases de datos todavía.
+          <div data-tour="tour-databases">
+            <p className="text-muted-foreground mt-3 px-3 py-1 text-[11px] font-medium tracking-wide uppercase">
+              Bases de datos
             </p>
-          ) : (
-            databaseTree.map((node) => (
-              <PageRow
-                key={node.id}
-                node={node}
-                workspaceId={workspace.id}
-                depth={0}
-              />
-            ))
-          )}
+            {databaseTree.length === 0 ? (
+              <p className="text-muted-foreground px-3 py-4 text-xs">
+                Sin bases de datos todavía.
+              </p>
+            ) : (
+              databaseTree.map((node) => (
+                <PageRow
+                  key={node.id}
+                  node={node}
+                  workspaceId={workspace.id}
+                  depth={0}
+                />
+              ))
+            )}
+          </div>
         </nav>
 
         <div className="border-border/60 mt-auto space-y-0.5 border-t p-1 pt-2 text-sm">
           <Link
             href={`/w/${workspace.id}/chat`}
+            data-tour="tour-chat"
             onClick={() => setOpen(false)}
             className={cn(
               "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5",
@@ -310,6 +313,7 @@ export function Sidebar({
           </Link>
           <Link
             href={`/w/${workspace.id}/trash`}
+            data-tour="tour-trash"
             onClick={() => setOpen(false)}
             className={cn(
               "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5",

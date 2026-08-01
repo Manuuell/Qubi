@@ -47,7 +47,7 @@ export function NotificationBell({
   }
 
   return (
-    <div className="relative">
+    <div className="relative" data-tour="tour-notifications">
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Notificaciones"
