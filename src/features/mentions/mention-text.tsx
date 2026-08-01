@@ -1,7 +1,9 @@
 import { parseMentions } from "@/features/mentions/mentions";
+import { linkifyChunks } from "@/features/mentions/linkify";
 
 // Pinta el texto de un comentario o mensaje resaltando las menciones
-// @[Nombre](id) como una píldora, sin exponer el formato interno.
+// @[Nombre](id) como una píldora, sin exponer el formato interno, y dejando
+// clicables los enlaces escritos dentro (avances con referencias, specs…).
 export function MentionText({ body }: { body: string }) {
   const segments = parseMentions(body);
   return (
@@ -15,7 +17,29 @@ export function MentionText({ body }: { body: string }) {
             @{s.name}
           </span>
         ) : (
-          <span key={i}>{s.value}</span>
+          <Linkified key={i} value={s.value} />
+        ),
+      )}
+    </>
+  );
+}
+
+function Linkified({ value }: { value: string }) {
+  return (
+    <>
+      {linkifyChunks(value).map((chunk, i) =>
+        chunk.type === "link" ? (
+          <a
+            key={i}
+            href={chunk.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
+          >
+            {chunk.value}
+          </a>
+        ) : (
+          <span key={i}>{chunk.value}</span>
         ),
       )}
     </>
