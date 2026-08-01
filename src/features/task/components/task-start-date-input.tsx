@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { toDateInputValue } from "@/features/task/labels";
 import { setTaskStartDateAction } from "@/server/actions/task";
+import { DatePicker } from "@/components/ui/date-picker";
 
 export function TaskStartDateInput({
   taskId,
@@ -18,22 +19,20 @@ export function TaskStartDateInput({
   const [pending, startTransition] = useTransition();
 
   return (
-    <input
-      type="date"
-      defaultValue={toDateInputValue(startDate)}
+    <DatePicker
+      value={toDateInputValue(startDate)}
       disabled={pending}
-      aria-label="Fecha de inicio"
-      onChange={(e) =>
+      ariaLabel="Fecha de inicio"
+      onChange={(value) =>
         startTransition(() =>
           setTaskStartDateAction({
             taskId,
             workspaceId,
             projectId,
-            startDate: e.target.value || null,
+            startDate: value || null,
           }),
         )
       }
-      className="border-input bg-background hover:bg-accent transition-ios cursor-pointer rounded-full border px-2.5 py-1 text-xs outline-none disabled:opacity-50"
     />
   );
 }

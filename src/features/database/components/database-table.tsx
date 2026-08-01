@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   addPropertyAction,
   addRowAction,
@@ -402,16 +403,15 @@ function DateCell({
   const [value, setValue] = useState(initial);
   const [, startTransition] = useTransition();
   return (
-    <input
-      type="date"
+    <DatePicker
       value={value}
-      onChange={(e) => {
-        setValue(e.target.value);
+      className="border-none bg-transparent px-2 py-1"
+      onChange={(next) => {
+        setValue(next);
         startTransition(() =>
-          setCellAction({ pageId, propertyId, value: e.target.value }),
+          setCellAction({ pageId, propertyId, value: next }),
         );
       }}
-      className={inputCls}
     />
   );
 }
