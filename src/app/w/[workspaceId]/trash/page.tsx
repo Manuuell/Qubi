@@ -30,7 +30,14 @@ export default async function TrashPage({
       </div>
       <TrashList
         workspaceId={workspaceId}
-        items={archived.map((a) => ({ id: a.id, title: a.title }))}
+        items={archived.map((a) => ({
+          id: a.id,
+          title: a.title,
+          icon: a.icon,
+          type: a.type,
+          archivedAt: a.archivedAt!.toISOString(),
+          updatedAt: a.updatedAt.toISOString(),
+        }))}
       />
     </div>
   );

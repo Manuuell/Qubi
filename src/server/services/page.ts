@@ -119,7 +119,14 @@ async function assertPageAccess(pageId: string, userId: string) {
 export async function getArchivedPages(workspaceId: string) {
   return prisma.page.findMany({
     where: { workspaceId, archivedAt: { not: null }, databaseId: null },
-    select: { id: true, title: true, icon: true, archivedAt: true },
+    select: {
+      id: true,
+      title: true,
+      icon: true,
+      type: true,
+      archivedAt: true,
+      updatedAt: true,
+    },
     orderBy: { archivedAt: "desc" },
   });
 }
@@ -144,6 +151,19 @@ export async function deletePageForever(pageId: string, userId: string) {
   await assertPageAccess(pageId, userId);
   // onDelete: Cascade en la relación PageTree borra también los descendientes.
   return prisma.page.delete({ where: { id: pageId } });
+}
+
+// Vacía la papelera del workspace: borra para siempre todas las páginas
+// archivadas de primer nivel (sus descendientes se van en cascada).
+export async function emptyTrash(workspaceId: string, userId: string) {
+  await assertWorkspaceAccess(workspaceId, userId);
+  const archived = await prisma.page.findMany({
+    where: { workspaceId, archivedAt: { not: null }, databaseId: null },
+    select: { id: true },
+  });
+  return prisma.page.deleteMany({
+    where: { id: { in: archived.map((p) => p.id) } },
+  });
 }
 
 // ── Compartición ─────────────────────────────────────────────────────────────

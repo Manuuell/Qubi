@@ -75,6 +75,12 @@ export async function deletePageForeverAction(input: {
   revalidatePath(`/w/${input.workspaceId}/trash`);
 }
 
+export async function emptyTrashAction(input: { workspaceId: string }) {
+  const user = await getCurrentUser();
+  await pageService.emptyTrash(input.workspaceId, user.id);
+  revalidatePath(`/w/${input.workspaceId}/trash`);
+}
+
 export async function setPagePublicAction(input: {
   pageId: string;
   workspaceId: string;

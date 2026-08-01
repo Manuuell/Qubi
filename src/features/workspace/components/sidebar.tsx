@@ -30,6 +30,7 @@ import { NewPageButton } from "@/features/page/components/new-page-button";
 import { CreateProjectButton } from "@/features/project/components/create-project-button";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
 import { AccountMenu } from "@/features/workspace/components/account-menu";
+import { UserPreview } from "@/features/workspace/components/user-preview";
 import { NotificationBell } from "@/features/notification/components/notification-bell";
 import type { Inbox } from "@/server/services/notification";
 import { useOnboarding } from "@/features/onboarding/onboarding-context";
@@ -57,8 +58,10 @@ export function Sidebar({
   pages,
   projects,
   favorites,
+  userId,
   userName,
   userEmail,
+  userImage,
   accounts,
   inbox,
   chatUnreadCount = 0,
@@ -78,8 +81,10 @@ export function Sidebar({
   pages: PageTreeItem[];
   projects: ProjectListItem[];
   favorites: { id: string; title: string; type: "PAGE" | "DATABASE" }[];
+  userId: string;
   userName: string;
   userEmail: string;
+  userImage?: string | null;
   accounts: { userId: string; name: string | null; email: string }[];
   inbox: Inbox;
   chatUnreadCount?: number;
@@ -138,6 +143,19 @@ export function Sidebar({
             <Home className="size-4" />
             Inicio
           </Link>
+          <Link
+            href={`/w/${workspace.id}/agenda`}
+            data-tour="tour-agenda"
+            onClick={() => setOpen(false)}
+            className={cn(
+              "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
+              pathname === `/w/${workspace.id}/agenda` &&
+                "bg-primary/10 text-primary",
+            )}
+          >
+            <CalendarCheck className="size-4" />
+            Mi agenda
+          </Link>
           <div data-tour="tour-create" className="space-y-0.5">
             <CreateProjectButton workspaceId={workspace.id} />
             <NewPageButton workspaceId={workspace.id} />
@@ -157,20 +175,6 @@ export function Sidebar({
         </div>
 
         <nav className="mt-1 flex-1 space-y-0.5 overflow-y-auto px-1 pb-4">
-          <Link
-            href={`/w/${workspace.id}/agenda`}
-            data-tour="tour-agenda"
-            onClick={() => setOpen(false)}
-            className={cn(
-              "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
-              pathname === `/w/${workspace.id}/agenda` &&
-                "bg-primary/10 text-primary",
-            )}
-          >
-            <CalendarCheck className="size-4" />
-            Mi agenda
-          </Link>
-
           <div data-tour="tour-projects" className="mt-3 mb-3">
             <p className="text-muted-foreground px-3 py-1 text-[11px] font-medium tracking-wide uppercase">
               Proyectos
@@ -321,10 +325,16 @@ export function Sidebar({
             data-tour="tour-account"
             className="border-border/60 mt-2 flex items-center gap-2 border-t px-1 pt-2"
           >
-            <span className="bg-primary/10 text-primary grid size-7 shrink-0 place-items-center rounded-full text-xs font-medium">
-              {userName.charAt(0).toUpperCase()}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-xs">{userName}</span>
+            <div className="min-w-0 flex-1 [&_span]:text-xs">
+              <UserPreview
+                workspaceId={workspace.id}
+                userId={userId}
+                name={userName}
+                email={userEmail}
+                image={userImage}
+                currentUserId={userId}
+              />
+            </div>
             <button
               onClick={startTour}
               aria-label="Ver guía de bienvenida"

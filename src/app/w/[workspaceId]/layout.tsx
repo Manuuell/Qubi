@@ -78,8 +78,10 @@ export default async function WorkspaceLayout({
                 title: p.title,
                 type: p.type,
               }))}
+              userId={user.id}
               userName={user.name ?? user.email}
               userEmail={user.email}
+              userImage={user.image}
               accounts={accounts}
               inbox={inbox}
               chatUnreadCount={chatUnreadCount}

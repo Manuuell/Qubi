@@ -212,11 +212,13 @@ async function WeekView({
           todayKey={todayKey()}
           editable={editable}
         />
-        <p className="text-muted-foreground mt-4 px-1 text-xs">
-          {editable
-            ? "Escribe las horas en cada celda (p. ej. 1.5 = 1 h 30 min) y pulsa Enter o sal del campo para guardar. El cronómetro suma su tiempo al detenerse."
-            : "Las horas se registran automáticamente con el cronómetro. La edición manual está reservada a los administradores de confianza del espacio."}
-        </p>
+        {!editable && (
+          <p className="text-muted-foreground mt-4 px-1 text-xs">
+            Las horas se registran automáticamente con el cronómetro. La edición
+            manual está reservada a los administradores de confianza del
+            espacio.
+          </p>
+        )}
       </WeekShell>
     </>
   );
