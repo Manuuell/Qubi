@@ -12,7 +12,9 @@ import { WorkspaceRole } from "@/generated/prisma/enums";
 import { listMyTasks } from "@/server/services/task";
 import { listProjects } from "@/server/services/project";
 import { getWeekTimesheet, getWorkspaceRole } from "@/server/services/time";
-import { getTeamOverview } from "@/server/services/manager";
+import { getTeamOverview, getTeamWorkload } from "@/server/services/manager";
+import { TeamWorkloadGrid } from "@/features/workspace/components/team-workload";
+import { isValidKey } from "@/features/time/week";
 import { WEEKDAY_LABELS, hoursLabel, todayKey } from "@/features/time/week";
 import { AgendaTaskRow } from "@/features/task/components/agenda-task-row";
 import { Card } from "@/components/ui/card";
@@ -37,10 +39,10 @@ export default async function WorkspaceHome({
   searchParams,
 }: {
   params: Promise<{ workspaceId: string }>;
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; week?: string }>;
 }) {
   const { workspaceId } = await params;
-  const { view: rawView } = await searchParams;
+  const { view: rawView, week } = await searchParams;
   const user = await getCurrentUser();
 
   const role = await getWorkspaceRole(workspaceId, user.id);
@@ -83,7 +85,11 @@ export default async function WorkspaceHome({
       </div>
 
       {view === "team" ? (
-        <TeamHome workspaceId={workspaceId} userId={user.id} />
+        <TeamHome
+          workspaceId={workspaceId}
+          userId={user.id}
+          week={isValidKey(week) ? week : undefined}
+        />
       ) : (
         <PersonalHome workspaceId={workspaceId} userId={user.id} />
       )}
@@ -297,11 +303,16 @@ const dueFmt = new Intl.DateTimeFormat("es-ES", {
 async function TeamHome({
   workspaceId,
   userId,
+  week,
 }: {
   workspaceId: string;
   userId: string;
+  week?: string;
 }) {
-  const overview = await getTeamOverview(workspaceId, userId);
+  const [overview, workload] = await Promise.all([
+    getTeamOverview(workspaceId, userId),
+    getTeamWorkload(workspaceId, userId, week),
+  ]);
 
   return (
     <>
@@ -335,6 +346,8 @@ async function TeamHome({
           </p>
         </Card>
       </div>
+
+      <TeamWorkloadGrid workload={workload} workspaceId={workspaceId} />
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card variant="glass" className="gap-3 p-0 lg:col-span-2">

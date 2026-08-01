@@ -4,7 +4,9 @@ import { assertWorkspaceAdmin } from "@/server/lib/permissions";
 import {
   addDaysToKey,
   dateToLocalKey,
+  dbDateToKey,
   keyToDbDate,
+  keyToLocalDate,
   mondayKeyOf,
 } from "@/features/time/week";
 
@@ -246,5 +248,128 @@ export async function getProjectProduction(
       assignees: t.assignees.map((a) => a.user),
       evidenceCount: t.comments.filter((c) => c.attachmentUrl).length,
     })),
+  };
+}
+
+// ── Carga de trabajo del equipo (miembros × días) ───────────────────────────
+
+export type WorkloadSegment = {
+  projectId: string;
+  projectName: string;
+  projectColor: string | null;
+  minutes: number;
+};
+
+export type WorkloadDay = {
+  dateKey: string;
+  minutes: number;
+  segments: WorkloadSegment[];
+};
+
+export type WorkloadMember = {
+  userId: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+  days: WorkloadDay[]; // 7 (lun..dom)
+  weekMinutes: number;
+  busiestDayMinutes: number;
+};
+
+export type TeamWorkload = {
+  weekStartKey: string;
+  dayKeys: string[]; // 7
+  members: WorkloadMember[];
+  dayTotals: number[]; // 7
+  weekMinutes: number;
+};
+
+// Solo OWNER/ADMIN. Reparto de las horas de la semana por persona y día, con
+// el desglose por proyecto de cada día: es lo que alimenta la vista de carga
+// (quién va sobrado, quién está al límite y en qué se le fue el tiempo).
+export async function getTeamWorkload(
+  workspaceId: string,
+  userId: string,
+  anchorKey?: string,
+): Promise<TeamWorkload> {
+  await assertWorkspaceAdmin(workspaceId, userId);
+
+  const weekStartKey = mondayKeyOf(
+    anchorKey ? keyToLocalDate(anchorKey) : new Date(),
+  );
+  const dayKeys = Array.from({ length: 7 }, (_, i) =>
+    addDaysToKey(weekStartKey, i),
+  );
+
+  const [members, entries] = await Promise.all([
+    prisma.workspaceMember.findMany({
+      where: { workspaceId },
+      select: {
+        user: { select: { id: true, name: true, email: true, image: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.timeEntry.findMany({
+      where: {
+        project: { workspaceId },
+        date: {
+          gte: keyToDbDate(weekStartKey),
+          lt: keyToDbDate(addDaysToKey(weekStartKey, 7)),
+        },
+      },
+      select: {
+        userId: true,
+        date: true,
+        minutes: true,
+        project: { select: { id: true, name: true, color: true } },
+      },
+    }),
+  ]);
+
+  // `${userId}|${dayKey}|${projectId}` -> minutos acumulados.
+  const buckets = new Map<string, WorkloadSegment>();
+  for (const e of entries) {
+    const key = `${e.userId}|${dbDateToKey(new Date(e.date))}|${e.project.id}`;
+    const current = buckets.get(key);
+    if (current) {
+      current.minutes += e.minutes;
+    } else {
+      buckets.set(key, {
+        projectId: e.project.id,
+        projectName: e.project.name,
+        projectColor: e.project.color,
+        minutes: e.minutes,
+      });
+    }
+  }
+
+  const dayTotals = new Array(7).fill(0) as number[];
+  const memberRows: WorkloadMember[] = members.map((m) => {
+    const days = dayKeys.map((dateKey, i) => {
+      const segments = [...buckets.entries()]
+        .filter(([key]) => key.startsWith(`${m.user.id}|${dateKey}|`))
+        .map(([, segment]) => segment)
+        .sort((a, b) => b.minutes - a.minutes);
+      const minutes = segments.reduce((sum, s) => sum + s.minutes, 0);
+      dayTotals[i] += minutes;
+      return { dateKey, minutes, segments };
+    });
+    return {
+      userId: m.user.id,
+      name: m.user.name,
+      email: m.user.email,
+      image: m.user.image,
+      days,
+      weekMinutes: days.reduce((sum, d) => sum + d.minutes, 0),
+      busiestDayMinutes: Math.max(0, ...days.map((d) => d.minutes)),
+    };
+  });
+
+  return {
+    weekStartKey,
+    dayKeys,
+    members: memberRows,
+    dayTotals,
+    weekMinutes: dayTotals.reduce((a, b) => a + b, 0),
   };
 }
