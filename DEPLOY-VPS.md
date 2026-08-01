@@ -126,6 +126,10 @@ papelera.
 > El servicio `seed` está detrás de un perfil de Compose, así que **no** se
 > ejecuta en los despliegues automáticos. Solo toca el espacio `qubi-demo` y las
 > cuentas de invitado: los datos reales de otros espacios no se tocan.
+>
+> Depende de que `migrate` haya terminado: si lo lanzas con un despliegue a
+> medias, espera a que las migraciones estén aplicadas en vez de sembrar contra
+> el esquema viejo (eso dejaba la demo a medio crear).
 
 ## Comandos útiles (en el VPS)
 

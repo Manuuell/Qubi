@@ -67,6 +67,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      # Sin esto, lanzar el seed mientras un despliegue está a medias lo hace
+      # correr contra el esquema viejo: falla a mitad y deja la demo incompleta.
+      migrate:
+        condition: service_completed_successfully
     restart: "no"
 
   app:
