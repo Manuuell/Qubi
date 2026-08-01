@@ -35,6 +35,19 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 
+const DATABASE_ICONS = [
+  "📁",
+  "🗂️",
+  "📋",
+  "📊",
+  "📎",
+  "🧾",
+  "🖼️",
+  "🗄️",
+  "📦",
+  "🔖",
+];
+
 type DatabaseItem = {
   id: string;
   title: string;
@@ -60,6 +73,7 @@ export function ProjectDatabases({
   const [pending, startTransition] = useTransition();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
+  const [icon, setIcon] = useState<string | null>(null);
   const [linking, setLinking] = useState(false);
   const [renaming, setRenaming] = useState<DatabaseItem | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -88,6 +102,29 @@ export function ProjectDatabases({
               placeholder="Ej: Assets del proyecto"
               className="bg-background focus:ring-ring transition-ios w-full rounded-2xl border px-4 py-2.5 text-sm outline-none focus:ring-2"
             />
+            <div>
+              <p className="text-muted-foreground mb-1.5 text-xs">
+                Icono (opcional)
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {DATABASE_ICONS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() =>
+                      setIcon((cur) => (cur === emoji ? null : emoji))
+                    }
+                    aria-label={`Icono ${emoji}`}
+                    className={`transition-ios grid size-9 place-items-center rounded-xl text-base active:scale-95 ${
+                      icon === emoji
+                        ? "bg-primary/15 ring-primary ring-2"
+                        : "bg-background/60 hover:bg-accent"
+                    }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button
               onClick={() =>
                 startTransition(() =>
@@ -95,6 +132,7 @@ export function ProjectDatabases({
                     workspaceId,
                     projectId,
                     name,
+                    icon: icon ?? undefined,
                   }),
                 )
               }

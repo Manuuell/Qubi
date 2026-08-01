@@ -163,10 +163,10 @@ export function KanbanBoard({
                     }),
                   )
                 }
-                className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios mt-2 flex w-full items-center gap-1 rounded-full px-2.5 py-1.5 text-xs"
+                className="bg-background/60 text-muted-foreground hover:bg-accent hover:text-foreground transition-ios mt-2 flex w-full items-center justify-center gap-1 rounded-2xl px-2.5 py-2 text-xs font-medium active:scale-[0.98]"
               >
                 <Plus className="size-3.5" />
-                Añadir
+                Añadir tarjeta
               </button>
             </div>
           );

@@ -95,10 +95,20 @@ export function DatabaseView({
           />
         )}
         {view === "list" && (
-          <ListView properties={properties} rows={visibleRows} />
+          <ListView
+            databaseId={databaseId}
+            workspaceId={workspaceId}
+            properties={properties}
+            rows={visibleRows}
+          />
         )}
         {view === "gallery" && (
-          <GalleryView properties={properties} rows={visibleRows} />
+          <GalleryView
+            databaseId={databaseId}
+            workspaceId={workspaceId}
+            properties={properties}
+            rows={visibleRows}
+          />
         )}
       </div>
     </div>

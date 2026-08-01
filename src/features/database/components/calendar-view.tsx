@@ -192,7 +192,7 @@ export function CalendarView({
                       )
                     }
                     aria-label="Añadir en este día"
-                    className="text-muted-foreground hover:bg-accent transition-ios grid size-5 place-items-center rounded-full opacity-0 group-hover:opacity-100"
+                    className="bg-background/60 text-muted-foreground hover:bg-accent hover:text-foreground transition-ios grid size-5 place-items-center rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                   >
                     <Plus className="size-3" />
                   </button>

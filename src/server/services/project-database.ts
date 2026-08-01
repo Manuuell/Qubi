@@ -81,6 +81,7 @@ export async function createProjectDatabase(
   projectId: string,
   userId: string,
   name: string,
+  icon?: string | null,
 ) {
   const project = await assertProjectAccess(projectId, userId);
   const page = await prisma.page.create({
@@ -88,6 +89,7 @@ export async function createProjectDatabase(
       workspaceId: project.workspaceId,
       type: "DATABASE",
       title: name.trim() || "Base de datos",
+      icon: icon?.trim() || null,
       createdById: userId,
     },
   });

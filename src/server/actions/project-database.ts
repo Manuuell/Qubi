@@ -10,12 +10,14 @@ export async function createProjectDatabaseAction(input: {
   workspaceId: string;
   projectId: string;
   name: string;
+  icon?: string;
 }) {
   const user = await getCurrentUser();
   const page = await projectDb.createProjectDatabase(
     input.projectId,
     user.id,
     input.name,
+    input.icon,
   );
   revalidatePath(`/w/${input.workspaceId}/projects/${input.projectId}`);
   redirect(`/w/${input.workspaceId}/${page.id}`);

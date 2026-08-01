@@ -1,31 +1,37 @@
 "use client";
 
+import { useTransition } from "react";
+import { LayoutGrid, Plus } from "lucide-react";
 import type { Property, Row } from "./database-table";
 import { formatPropertyValue } from "../format";
+import { Card } from "@/components/ui/card";
+import { addRowAction } from "@/server/actions/database";
 
 export function GalleryView({
+  databaseId,
+  workspaceId,
   properties,
   rows,
 }: {
+  databaseId: string;
+  workspaceId: string;
   properties: Property[];
   rows: Row[];
 }) {
-  if (rows.length === 0) {
-    return (
-      <p className="text-muted-foreground mt-6 text-sm">Sin resultados.</p>
-    );
-  }
+  const [pending, startTransition] = useTransition();
 
   return (
     <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {rows.map((row) => (
-        <div
+        <Card
           key={row.id}
-          className="bg-card transition-ios rounded-2xl p-4 shadow-sm hover:shadow-md"
+          variant="glass"
+          className="transition-ios gap-2 p-4 hover:shadow-md"
         >
-          <div className="mb-2 text-sm font-medium">
-            {row.title || "Sin título"}
+          <div className="bg-primary/10 text-primary mb-1 grid size-9 place-items-center rounded-xl">
+            <LayoutGrid className="size-4" />
           </div>
+          <div className="text-sm font-medium">{row.title || "Sin título"}</div>
           <div className="space-y-1">
             {properties.map((p) => {
               const v = formatPropertyValue(p, row.values[p.id]);
@@ -38,8 +44,19 @@ export function GalleryView({
               );
             })}
           </div>
-        </div>
+        </Card>
       ))}
+
+      <button
+        onClick={() =>
+          startTransition(() => addRowAction({ databaseId, workspaceId }))
+        }
+        disabled={pending}
+        className="border-border/60 text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex min-h-28 flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed text-sm font-medium active:scale-[0.98] disabled:opacity-50"
+      >
+        <Plus className="size-5" />
+        Agregar
+      </button>
     </div>
   );
 }
