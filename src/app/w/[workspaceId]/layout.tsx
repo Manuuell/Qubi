@@ -6,6 +6,7 @@ import { listProjects } from "@/server/services/project";
 import { getInbox } from "@/server/services/notification";
 import { getUnreadChatCount } from "@/server/services/chat";
 import { getRunningTimer } from "@/server/services/time";
+import { getWorkspaceRole, isAdminRole } from "@/server/lib/permissions";
 import { readRing } from "@/server/account-ring";
 import { Sidebar } from "@/features/workspace/components/sidebar";
 import { MobileTopbar } from "@/features/workspace/components/mobile-topbar";
@@ -36,6 +37,7 @@ export default async function WorkspaceLayout({
     inbox,
     runningTimer,
     chatUnreadCount,
+    role,
   ] = await Promise.all([
     getPageTree(workspaceId),
     getUserWorkspaces(user.id),
@@ -45,6 +47,7 @@ export default async function WorkspaceLayout({
     getInbox({ id: user.id, email: user.email }),
     getRunningTimer(user.id),
     getUnreadChatCount(workspaceId, user.id),
+    getWorkspaceRole(workspaceId, user.id),
   ]);
 
   // Otras cuentas recordadas en este navegador (excluye la activa).
@@ -85,6 +88,7 @@ export default async function WorkspaceLayout({
               accounts={accounts}
               inbox={inbox}
               chatUnreadCount={chatUnreadCount}
+              isManager={isAdminRole(role)}
             />
             <main className="bg-card flex min-w-0 flex-1 flex-col overflow-y-auto rounded-3xl shadow-xs">
               <div className="p-2 md:hidden">

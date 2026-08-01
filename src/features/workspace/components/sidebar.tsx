@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
+  BarChart3,
   CalendarCheck,
   ChevronRight,
   Clock,
@@ -65,6 +66,7 @@ export function Sidebar({
   accounts,
   inbox,
   chatUnreadCount = 0,
+  isManager = false,
 }: {
   workspace: {
     id: string;
@@ -88,11 +90,14 @@ export function Sidebar({
   accounts: { userId: string; name: string | null; email: string }[];
   inbox: Inbox;
   chatUnreadCount?: number;
+  /** OWNER/ADMIN: ve el panel de equipo (producción, horas y avances de todos). */
+  isManager?: boolean;
 }) {
   const tree = buildTree(pages);
   const pageTree = tree.filter((n) => n.type !== "DATABASE");
   const databaseTree = tree.filter((n) => n.type === "DATABASE");
   const pathname = usePathname();
+  const view = useSearchParams().get("view");
   const [pending, startTransition] = useTransition();
   const { start: startTour } = useOnboarding();
   const { open, setOpen } = useMobileSidebar();
@@ -298,6 +303,23 @@ export function Sidebar({
             <Clock className="size-4" />
             Registro de horas
           </Link>
+          {/* Panel de equipo: solo OWNER/ADMIN. Hasta ahora únicamente se
+              llegaba desde el conmutador del inicio, así que no se encontraba. */}
+          {isManager && (
+            <Link
+              href={`/w/${workspace.id}?view=team`}
+              onClick={() => setOpen(false)}
+              className={cn(
+                "text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-2 rounded-full px-3 py-1.5",
+                pathname === `/w/${workspace.id}` &&
+                  view === "team" &&
+                  "bg-primary/10 text-primary",
+              )}
+            >
+              <BarChart3 className="size-4" />
+              Equipo
+            </Link>
+          )}
           <Link
             href={`/w/${workspace.id}/members`}
             data-tour="tour-members"
