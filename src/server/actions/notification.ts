@@ -32,3 +32,11 @@ export async function markAllNotificationsReadAction() {
   await notificationService.markAllNotificationsRead(user.id);
   revalidatePath("/", "layout");
 }
+
+export async function loadNotificationHistoryAction(input: {
+  cursor?: string;
+  onlyUnread?: boolean;
+}) {
+  const user = await getCurrentUser();
+  return notificationService.getNotificationHistory(user.id, input);
+}

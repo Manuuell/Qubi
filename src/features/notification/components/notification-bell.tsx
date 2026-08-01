@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Bell, Check, UserPlus, X } from "lucide-react";
 import type { Inbox } from "@/server/services/notification";
 import {
@@ -23,7 +24,13 @@ function timeAgo(date: Date) {
   return `hace ${d} d`;
 }
 
-export function NotificationBell({ inbox }: { inbox: Inbox }) {
+export function NotificationBell({
+  inbox,
+  workspaceId,
+}: {
+  inbox: Inbox;
+  workspaceId: string;
+}) {
   const { invites, notifications, unreadCount } = inbox;
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -157,6 +164,14 @@ export function NotificationBell({ inbox }: { inbox: Inbox }) {
                 ))}
               </ul>
             )}
+
+            <Link
+              href={`/w/${workspaceId}/notifications`}
+              onClick={() => setOpen(false)}
+              className="border-border/60 text-muted-foreground hover:text-foreground transition-ios sticky bottom-0 block border-t bg-clip-padding px-4 py-2.5 text-center text-xs font-medium"
+            >
+              Ver historial de notificaciones
+            </Link>
           </div>
         </>
       )}

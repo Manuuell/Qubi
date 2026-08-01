@@ -343,7 +343,7 @@ export function Sidebar({
             >
               <HelpCircle className="size-4" />
             </button>
-            <NotificationBell inbox={inbox} />
+            <NotificationBell inbox={inbox} workspaceId={workspace.id} />
             <ThemeToggle />
             <AccountMenu
               current={{ name: userName, email: userEmail }}

@@ -220,6 +220,38 @@ export async function getInbox(user: { id: string; email: string }) {
   return { invites, notifications, unreadCount };
 }
 
+const HISTORY_PAGE_SIZE = 30;
+
+// Historial completo (paginado) para la pantalla de notificaciones, sin el
+// límite de 20 que usa la campanita del sidebar.
+export async function getNotificationHistory(
+  userId: string,
+  opts: { cursor?: string; onlyUnread?: boolean } = {},
+) {
+  const items = await prisma.notification.findMany({
+    where: { userId, ...(opts.onlyUnread ? { readAt: null } : {}) },
+    orderBy: { createdAt: "desc" },
+    take: HISTORY_PAGE_SIZE + 1,
+    ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+    select: {
+      id: true,
+      type: true,
+      title: true,
+      body: true,
+      href: true,
+      readAt: true,
+      createdAt: true,
+    },
+  });
+
+  const hasMore = items.length > HISTORY_PAGE_SIZE;
+  const notifications = hasMore ? items.slice(0, HISTORY_PAGE_SIZE) : items;
+  return {
+    notifications,
+    nextCursor: hasMore ? notifications[notifications.length - 1].id : null,
+  };
+}
+
 export async function markNotificationRead(userId: string, id: string) {
   // updateMany acota por userId: nadie marca notificaciones ajenas.
   await prisma.notification.updateMany({
