@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import Link from "next/link";
 import { Hash, Paperclip, Send } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,6 +16,10 @@ import {
   sendChatMessageAction,
   markConversationReadAction,
 } from "@/server/actions/chat";
+import {
+  CHAT_EVENT,
+  type RealtimeChatEvent,
+} from "@/features/realtime/realtime-provider";
 
 export type ChatMessageData = {
   id: string;
@@ -65,6 +75,10 @@ export function ChatThread({
   const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   // Marca como leída al entrar y cuando llegan mensajes nuevos.
   useEffect(() => {
@@ -75,31 +89,44 @@ export function ChatThread({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages]);
 
-  // Polling: pregunta por mensajes nuevos cada 3s mientras el chat está abierto.
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      const last = messages.at(-1);
-      const after = last
-        ? new Date(last.createdAt).toISOString()
-        : new Date(0).toISOString();
-      try {
-        const res = await fetch(
-          `/api/chat/${conversationId}/messages?after=${encodeURIComponent(after)}`,
-        );
-        if (!res.ok) return;
-        const fresh: ChatMessageData[] = await res.json();
-        if (fresh.length > 0) {
-          setMessages((cur) => appendUnique(cur, fresh));
-          if (fresh.some((m) => m.senderId !== currentUserId)) {
-            markConversationReadAction({ conversationId, workspaceId });
-          }
+  const checkForNewMessages = useCallback(async () => {
+    const last = messagesRef.current.at(-1);
+    const after = last
+      ? new Date(last.createdAt).toISOString()
+      : new Date(0).toISOString();
+    try {
+      const res = await fetch(
+        `/api/chat/${conversationId}/messages?after=${encodeURIComponent(after)}`,
+      );
+      if (!res.ok) return;
+      const fresh: ChatMessageData[] = await res.json();
+      if (fresh.length > 0) {
+        setMessages((cur) => appendUnique(cur, fresh));
+        if (fresh.some((m) => m.senderId !== currentUserId)) {
+          markConversationReadAction({ conversationId, workspaceId });
         }
-      } catch {
-        // silencioso: se reintenta en el próximo tick
       }
-    }, 3000);
+    } catch {
+      // silencioso: se reintenta en el próximo tick / evento
+    }
+  }, [conversationId, workspaceId, currentUserId]);
+
+  // Tiempo real: el SSE de RealtimeProvider avisa al instante cuando llega
+  // un mensaje nuevo en esta conversación.
+  useEffect(() => {
+    function onChatEvent(e: Event) {
+      const detail = (e as CustomEvent<RealtimeChatEvent>).detail;
+      if (detail.conversationId === conversationId) checkForNewMessages();
+    }
+    window.addEventListener(CHAT_EVENT, onChatEvent);
+    return () => window.removeEventListener(CHAT_EVENT, onChatEvent);
+  }, [conversationId, checkForNewMessages]);
+
+  // Respaldo por si el SSE se corta (reconexión, pestaña en segundo plano, etc.).
+  useEffect(() => {
+    const interval = setInterval(checkForNewMessages, 15_000);
     return () => clearInterval(interval);
-  }, [conversationId, workspaceId, currentUserId, messages]);
+  }, [checkForNewMessages]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();

@@ -12,6 +12,7 @@ import { MobileTopbar } from "@/features/workspace/components/mobile-topbar";
 import { MobileSidebarProvider } from "@/features/workspace/components/mobile-sidebar-context";
 import { OnboardingProvider } from "@/features/onboarding/onboarding-context";
 import { TimerWidgetProvider } from "@/features/time/timer-widget-context";
+import { RealtimeProvider } from "@/features/realtime/realtime-provider";
 
 export default async function WorkspaceLayout({
   children,
@@ -53,6 +54,7 @@ export default async function WorkspaceLayout({
 
   return (
     <div className="bg-board bg-background flex h-screen gap-2 p-2">
+      <RealtimeProvider />
       <TimerWidgetProvider initialTimer={runningTimer}>
         <MobileSidebarProvider>
           <OnboardingProvider userId={user.id}>

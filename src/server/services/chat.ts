@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { assertWorkspaceMember } from "@/server/lib/permissions";
 import { getProject } from "@/server/services/project";
+import { publishToUser } from "@/server/lib/event-bus";
 
 const personSelect = {
   id: true,
@@ -248,6 +249,15 @@ export async function sendMessage(
     where: { conversationId_userId: { conversationId, userId } },
     data: { lastReadAt: message.createdAt },
   });
+
+  const participants = await prisma.conversationParticipant.findMany({
+    where: { conversationId },
+    select: { userId: true },
+  });
+  for (const p of participants) {
+    publishToUser(p.userId, { type: "chat", conversationId });
+  }
+
   return message;
 }
 

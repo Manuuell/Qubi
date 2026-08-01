@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { IssueStatus, NotificationType } from "@/generated/prisma/enums";
+import { publishToUser } from "@/server/lib/event-bus";
 
 // Tarea recién actualizada de la que conocemos los campos necesarios para armar
 // notificaciones (evita una segunda consulta).
@@ -32,6 +33,9 @@ export async function notifyTaskAssigned(
       actorId,
     })),
   });
+  for (const userId of recipients) {
+    publishToUser(userId, { type: "notification" });
+  }
 }
 
 // Notifica a los asignados de una tarea que el manager comentó/dio feedback
@@ -55,6 +59,9 @@ export async function notifyReviewFeedback(
       actorId,
     })),
   });
+  for (const userId of recipients) {
+    publishToUser(userId, { type: "notification" });
+  }
 }
 
 // Notifica a los asignados que el manager reabrió una tarea que ya estaba Hecha.
@@ -77,6 +84,9 @@ export async function notifyTaskReopened(
       actorId,
     })),
   });
+  for (const userId of recipients) {
+    publishToUser(userId, { type: "notification" });
+  }
 }
 
 // Genera notificaciones para las tareas del usuario que vencen pronto (o ya
