@@ -13,6 +13,7 @@ import {
   removeTaskAttachmentAction,
 } from "@/server/actions/task";
 import { Card } from "@/components/ui/card";
+import { FileViewer, type ViewableFile } from "@/features/files/file-viewer";
 
 type Attachment = {
   id: string;
@@ -57,6 +58,7 @@ export function TaskAttachments({
   const fileRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<ViewableFile | null>(null);
 
   function onUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -109,11 +111,15 @@ export function TaskAttachments({
                 variant="glass"
                 className="flex-row items-center gap-2.5 p-3"
               >
-                <a
-                  href={a.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex min-w-0 flex-1 items-center gap-2.5"
+                <button
+                  onClick={() =>
+                    setViewing({
+                      url: a.url,
+                      name: a.name,
+                      mimeType: a.mimeType,
+                    })
+                  }
+                  className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                 >
                   <span className="bg-primary/10 text-primary grid size-9 shrink-0 place-items-center rounded-xl">
                     <Icon className="size-4" />
@@ -126,7 +132,7 @@ export function TaskAttachments({
                         ` · ${a.uploadedBy.name?.trim() || a.uploadedBy.email}`}
                     </span>
                   </span>
-                </a>
+                </button>
                 <button
                   onClick={() =>
                     startTransition(() =>
@@ -147,6 +153,7 @@ export function TaskAttachments({
           })}
         </div>
       )}
+      <FileViewer file={viewing} onClose={() => setViewing(null)} />
     </div>
   );
 }
