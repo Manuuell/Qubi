@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
+  DropdownMenuGroup,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 
@@ -80,25 +81,28 @@ export function TaskAssigneeSelect({
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-56">
-        <DropdownMenuLabel>
-          Responsables (máx. {MAX_ASSIGNEES})
-        </DropdownMenuLabel>
-        {members.map((m) => (
-          <DropdownMenuCheckboxItem
-            key={m.id}
-            checked={assigneeIds.includes(m.id)}
-            onCheckedChange={() => toggle(m.id)}
-            disabled={
-              !assigneeIds.includes(m.id) && assigneeIds.length >= MAX_ASSIGNEES
-            }
-          >
-            <Avatar size="sm">
-              <AvatarImage src={m.image ?? undefined} alt="" />
-              <AvatarFallback>{initials(m.name, m.email)}</AvatarFallback>
-            </Avatar>
-            <span className="truncate">{m.name?.trim() || m.email}</span>
-          </DropdownMenuCheckboxItem>
-        ))}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>
+            Responsables (máx. {MAX_ASSIGNEES})
+          </DropdownMenuLabel>
+          {members.map((m) => (
+            <DropdownMenuCheckboxItem
+              key={m.id}
+              checked={assigneeIds.includes(m.id)}
+              onCheckedChange={() => toggle(m.id)}
+              disabled={
+                !assigneeIds.includes(m.id) &&
+                assigneeIds.length >= MAX_ASSIGNEES
+              }
+            >
+              <Avatar size="sm">
+                <AvatarImage src={m.image ?? undefined} alt="" />
+                <AvatarFallback>{initials(m.name, m.email)}</AvatarFallback>
+              </Avatar>
+              <span className="truncate">{m.name?.trim() || m.email}</span>
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

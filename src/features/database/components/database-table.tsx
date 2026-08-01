@@ -16,6 +16,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -158,24 +159,26 @@ function AddColumnMenu({
         <Plus className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Nueva columna</DropdownMenuLabel>
-        {types.map((t) => (
-          <DropdownMenuItem
-            key={t}
-            onClick={() =>
-              startTransition(() =>
-                addPropertyAction({
-                  databaseId,
-                  workspaceId,
-                  type: t,
-                  name: TYPE_LABELS[t],
-                }),
-              )
-            }
-          >
-            {TYPE_LABELS[t]}
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Nueva columna</DropdownMenuLabel>
+          {types.map((t) => (
+            <DropdownMenuItem
+              key={t}
+              onClick={() =>
+                startTransition(() =>
+                  addPropertyAction({
+                    databaseId,
+                    workspaceId,
+                    type: t,
+                    name: TYPE_LABELS[t],
+                  }),
+                )
+              }
+            >
+              {TYPE_LABELS[t]}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -215,28 +218,32 @@ function PropertyHeader({
             <ChevronDown className="size-3.5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            <DropdownMenuLabel>{TYPE_LABELS[property.type]}</DropdownMenuLabel>
-            {property.type === "SELECT" && (
-              <DropdownMenuItem
-                onClick={() =>
-                  setTimeout(() => {
-                    const opt = window.prompt("Nueva opción:");
-                    if (opt) {
-                      startTransition(() =>
-                        addSelectOptionAction({
-                          propertyId: property.id,
-                          databaseId,
-                          workspaceId,
-                          option: opt,
-                        }),
-                      );
-                    }
-                  }, 0)
-                }
-              >
-                Añadir opción…
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>
+                {TYPE_LABELS[property.type]}
+              </DropdownMenuLabel>
+              {property.type === "SELECT" && (
+                <DropdownMenuItem
+                  onClick={() =>
+                    setTimeout(() => {
+                      const opt = window.prompt("Nueva opción:");
+                      if (opt) {
+                        startTransition(() =>
+                          addSelectOptionAction({
+                            propertyId: property.id,
+                            databaseId,
+                            workspaceId,
+                            option: opt,
+                          }),
+                        );
+                      }
+                    }, 0)
+                  }
+                >
+                  Añadir opción…
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"
