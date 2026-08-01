@@ -19,6 +19,7 @@ import {
   deleteProjectDatabaseAction,
 } from "@/server/actions/project-database";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogTrigger,
@@ -62,6 +63,7 @@ export function ProjectDatabases({
   const [linking, setLinking] = useState(false);
   const [renaming, setRenaming] = useState<DatabaseItem | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [deleting, setDeleting] = useState<DatabaseItem | null>(null);
 
   return (
     <div className="space-y-3">
@@ -213,21 +215,7 @@ export function ProjectDatabases({
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     variant="destructive"
-                    onClick={() => {
-                      if (
-                        confirm(
-                          `¿Borrar "${d.title}"? Se moverá a la papelera.`,
-                        )
-                      ) {
-                        startTransition(() =>
-                          deleteProjectDatabaseAction({
-                            workspaceId,
-                            projectId,
-                            pageId: d.id,
-                          }),
-                        );
-                      }
-                    }}
+                    onClick={() => setDeleting(d)}
                   >
                     <Trash2 className="size-4" />
                     Borrar
@@ -273,6 +261,26 @@ export function ProjectDatabases({
           </button>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        title={`¿Borrar "${deleting?.title}"?`}
+        description="Se moverá a la papelera. Podrás recuperarla desde ahí mientras no se vacíe."
+        confirmLabel="Borrar"
+        pending={pending}
+        onConfirm={() => {
+          if (!deleting) return;
+          startTransition(() =>
+            deleteProjectDatabaseAction({
+              workspaceId,
+              projectId,
+              pageId: deleting.id,
+            }),
+          );
+          setDeleting(null);
+        }}
+      />
     </div>
   );
 }

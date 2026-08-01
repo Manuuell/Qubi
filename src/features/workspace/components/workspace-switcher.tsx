@@ -8,6 +8,8 @@ import {
   renameWorkspaceAction,
   deleteWorkspaceAction,
 } from "@/server/actions/workspace";
+import { PromptDialog } from "@/components/ui/prompt-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type Ws = { id: string; name: string; icon: string | null; isOwner: boolean };
 
@@ -20,39 +22,25 @@ export function WorkspaceSwitcher({
 }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [creating, setCreating] = useState(false);
+  const [renaming, setRenaming] = useState<Ws | null>(null);
+  const [deleting, setDeleting] = useState<Ws | null>(null);
 
-  function createWorkspace() {
-    setOpen(false);
-    setTimeout(() => {
-      const name = window.prompt("Nombre del nuevo espacio:");
-      if (name?.trim()) {
-        startTransition(() => createWorkspaceAction({ name: name.trim() }));
-      }
-    }, 0);
+  function createWorkspace(name: string) {
+    startTransition(() => createWorkspaceAction({ name }));
+    setCreating(false);
   }
 
-  function renameWorkspace(w: Ws) {
-    setOpen(false);
-    setTimeout(() => {
-      const name = window.prompt("Nuevo nombre del espacio:", w.name);
-      if (name?.trim() && name.trim() !== w.name) {
-        startTransition(() =>
-          renameWorkspaceAction({ workspaceId: w.id, name: name.trim() }),
-        );
-      }
-    }, 0);
+  function renameWorkspace(w: Ws, name: string) {
+    if (name !== w.name) {
+      startTransition(() => renameWorkspaceAction({ workspaceId: w.id, name }));
+    }
+    setRenaming(null);
   }
 
   function deleteWorkspace(w: Ws) {
-    setOpen(false);
-    setTimeout(() => {
-      const ok = window.confirm(
-        `¿Eliminar el espacio "${w.name}"?\n\nSe borrarán también sus proyectos, tareas, horas y páginas. Esta acción no se puede deshacer.`,
-      );
-      if (ok) {
-        startTransition(() => deleteWorkspaceAction({ workspaceId: w.id }));
-      }
-    }, 0);
+    startTransition(() => deleteWorkspaceAction({ workspaceId: w.id }));
+    setDeleting(null);
   }
 
   return (
@@ -96,7 +84,10 @@ export function WorkspaceSwitcher({
                 {w.isOwner && (
                   <>
                     <button
-                      onClick={() => renameWorkspace(w)}
+                      onClick={() => {
+                        setOpen(false);
+                        setRenaming(w);
+                      }}
                       disabled={pending}
                       aria-label={`Renombrar ${w.name}`}
                       className="text-muted-foreground hover:bg-accent-foreground/10 hover:text-foreground transition-ios grid size-6 shrink-0 place-items-center rounded-full opacity-0 group-hover:opacity-100 disabled:opacity-50"
@@ -104,7 +95,10 @@ export function WorkspaceSwitcher({
                       <Pencil className="size-3.5" />
                     </button>
                     <button
-                      onClick={() => deleteWorkspace(w)}
+                      onClick={() => {
+                        setOpen(false);
+                        setDeleting(w);
+                      }}
                       disabled={pending}
                       aria-label={`Eliminar ${w.name}`}
                       className="text-muted-foreground hover:bg-accent-foreground/10 hover:text-destructive transition-ios grid size-6 shrink-0 place-items-center rounded-full opacity-0 group-hover:opacity-100 disabled:opacity-50"
@@ -116,7 +110,10 @@ export function WorkspaceSwitcher({
               </div>
             ))}
             <button
-              onClick={createWorkspace}
+              onClick={() => {
+                setOpen(false);
+                setCreating(true);
+              }}
               disabled={pending}
               className="text-muted-foreground hover:bg-accent hover:text-foreground border-border/60 transition-ios mt-1 flex w-full items-center gap-2 rounded-xl border-t px-2.5 py-1.5 text-sm disabled:opacity-50"
             >
@@ -126,6 +123,34 @@ export function WorkspaceSwitcher({
           </div>
         </>
       )}
+
+      <PromptDialog
+        open={creating}
+        onOpenChange={setCreating}
+        title="Nuevo espacio"
+        placeholder="Nombre del espacio"
+        confirmLabel="Crear"
+        pending={pending}
+        onConfirm={createWorkspace}
+      />
+      <PromptDialog
+        open={renaming !== null}
+        onOpenChange={(o) => !o && setRenaming(null)}
+        title="Renombrar espacio"
+        initialValue={renaming?.name ?? ""}
+        confirmLabel="Guardar"
+        pending={pending}
+        onConfirm={(name) => renaming && renameWorkspace(renaming, name)}
+      />
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        title={`¿Eliminar el espacio "${deleting?.name}"?`}
+        description="Se borrarán también sus proyectos, tareas, horas y páginas. Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        pending={pending}
+        onConfirm={() => deleting && deleteWorkspace(deleting)}
+      />
     </div>
   );
 }
