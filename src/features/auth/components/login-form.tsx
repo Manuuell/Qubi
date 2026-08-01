@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { QubiMark } from "@/components/qubi-mark";
 import {
   googleSignInAction,
   loginAction,
@@ -47,10 +48,7 @@ export function LoginForm({
   return (
     <div className="glass-strong w-full max-w-sm space-y-6 rounded-3xl p-8">
       <div className="space-y-2 text-center">
-        <div
-          aria-hidden
-          className="chess-pattern border-border mx-auto size-10 rounded-2xl border"
-        />
+        <QubiMark size={40} className="mx-auto" />
         <div className="font-heading text-3xl font-bold tracking-tight">
           Qubi
         </div>
