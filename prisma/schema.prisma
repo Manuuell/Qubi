@@ -603,6 +603,7 @@ enum PropertyType {
   SELECT
   DATE
   CHECKBOX
+  FILE
 }
 
 // Columna de una base de datos (la base de datos es una Page con type=DATABASE).

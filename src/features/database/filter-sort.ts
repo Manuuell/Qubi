@@ -36,6 +36,9 @@ export const OPERATORS: Record<PropType, { value: string; label: string }[]> = {
     { value: "after", label: "después de" },
   ],
   CHECKBOX: [{ value: "is", label: "es" }],
+  // Sin operadores: filtrar por archivo adjunto no aporta y el valor
+  // guardado es un objeto {url, name}, no un escalar comparable.
+  FILE: [],
 };
 
 export function fieldsFromProperties(properties: Property[]): FieldOption[] {

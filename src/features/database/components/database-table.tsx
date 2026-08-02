@@ -1,7 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { ChevronDown, Plus, Trash2 } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
+import {
+  ChevronDown,
+  File as FileIcon,
+  Paperclip,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   addPropertyAction,
@@ -36,9 +43,12 @@ const TYPE_LABELS: Record<PropType, string> = {
   SELECT: "Selección",
   DATE: "Fecha",
   CHECKBOX: "Casilla",
+  FILE: "Archivo",
 };
 
-type PropType = "TEXT" | "NUMBER" | "SELECT" | "DATE" | "CHECKBOX";
+type PropType = "TEXT" | "NUMBER" | "SELECT" | "DATE" | "CHECKBOX" | "FILE";
+type FileValue = { url: string; name: string };
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg|avif)$/i;
 export type Property = {
   id: string;
   name: string;
@@ -330,6 +340,18 @@ function Cell({
           initial={value == null ? "" : String(value)}
         />
       );
+    case "FILE":
+      return (
+        <FileCell
+          pageId={pageId}
+          propertyId={property.id}
+          initial={
+            value && typeof value === "object" && "url" in value
+              ? (value as FileValue)
+              : null
+          }
+        />
+      );
     default:
       return (
         <TextCell
@@ -484,5 +506,100 @@ function SelectCell({
         ))}
       </SelectContent>
     </Select>
+  );
+}
+
+function FileCell({
+  pageId,
+  propertyId,
+  initial,
+}: {
+  pageId: string;
+  propertyId: string;
+  initial: FileValue | null;
+}) {
+  const [value, setValue] = useState(initial);
+  const [uploading, setUploading] = useState(false);
+  const [, startTransition] = useTransition();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFile(file: File) {
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      if (!res.ok) return;
+      const data = (await res.json()) as { url: string };
+      const next: FileValue = { url: data.url, name: file.name };
+      setValue(next);
+      startTransition(() => setCellAction({ pageId, propertyId, value: next }));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function remove() {
+    setValue(null);
+    startTransition(() => setCellAction({ pageId, propertyId, value: null }));
+  }
+
+  if (!value) {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="text-muted-foreground hover:bg-accent hover:text-foreground transition-ios flex items-center gap-1.5 rounded-full px-2 py-1 text-xs disabled:opacity-50"
+        >
+          <Paperclip className="size-3.5" />
+          {uploading ? "Subiendo…" : "Subir"}
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleFile(file);
+            e.target.value = "";
+          }}
+        />
+      </>
+    );
+  }
+
+  const isImage = IMAGE_EXT.test(value.url);
+
+  return (
+    <div className="group/file flex items-center gap-1 px-1">
+      <a
+        href={value.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="hover:bg-accent transition-ios flex min-w-0 flex-1 items-center gap-1.5 rounded-full px-1.5 py-1"
+      >
+        {isImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={value.url}
+            alt=""
+            className="size-5 shrink-0 rounded object-cover"
+          />
+        ) : (
+          <FileIcon className="text-muted-foreground size-4 shrink-0" />
+        )}
+        <span className="truncate text-xs">{value.name}</span>
+      </a>
+      <button
+        type="button"
+        onClick={remove}
+        aria-label="Quitar archivo"
+        className="text-muted-foreground hover:text-foreground shrink-0 opacity-0 transition-opacity group-hover/file:opacity-100"
+      >
+        <X className="size-3.5" />
+      </button>
+    </div>
   );
 }
