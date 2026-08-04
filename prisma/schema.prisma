@@ -20,11 +20,6 @@ enum WorkspaceRole {
   GUEST
 }
 
-enum PageType {
-  PAGE
-  DATABASE
-}
-
 enum ProjectStatus {
   ACTIVE
   ARCHIVED
@@ -91,10 +86,8 @@ model User {
 
   memberships       WorkspaceMember[]
   ownedWorkspaces   Workspace[]               @relation("WorkspaceOwner")
-  createdPages      Page[]                    @relation("PageCreatedBy")
   accounts          Account[]
   sessions          Session[]
-  favorites         Favorite[]
   authoredIssues    Issue[]                   @relation("IssueAuthor")
   issueAssignments  IssueAssignee[]
   issueComments     IssueComment[]            @relation("IssueCommentAuthor")
@@ -166,7 +159,6 @@ model Workspace {
 
   owner         User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members       WorkspaceMember[]
-  pages         Page[]
   issues        Issue[]
   projects      Project[]
   labels        Label[]
@@ -198,25 +190,9 @@ model Project {
   timeEntries   TimeEntry[]
   runningTimers RunningTimer[]
   workSessions  WorkSession[]
-  databases     ProjectDatabase[] // bases de datos de archivos vinculadas (pueden compartirse entre proyectos)
   conversation  Conversation? // canal de chat grupal del proyecto
 
   @@index([workspaceId])
-}
-
-// Tabla puente proyecto <-> base de datos de archivos (Page con type=DATABASE).
-// Una misma base de datos puede vincularse a 2 o más proyectos.
-model ProjectDatabase {
-  id        String   @id @default(cuid())
-  projectId String
-  pageId    String
-  createdAt DateTime @default(now())
-
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  page    Page    @relation(fields: [pageId], references: [id], onDelete: Cascade)
-
-  @@unique([projectId, pageId])
-  @@index([pageId])
 }
 
 // Tabla puente usuario <-> workspace (con su rol).
@@ -282,58 +258,6 @@ model Notification {
   @@index([userId, issueId])
 }
 
-// ── Páginas (contenido; anidables en árbol) ──────────────────────────────
-
-model Page {
-  id          String    @id @default(cuid())
-  workspaceId String
-  parentId    String? // null = página de primer nivel
-  databaseId  String? // si está, esta página es una FILA de esa base de datos
-  title       String    @default("")
-  icon        String?
-  cover       String?
-  type        PageType  @default(PAGE)
-  content     Json? // documento de bloques (JSON; legado pre-Yjs)
-  yjsState    Bytes? // documento Yjs (binario) para edición colaborativa en tiempo real
-  isPublic    Boolean   @default(false) // enlace público de solo lectura
-  archivedAt  DateTime? // papelera (soft-delete)
-  createdById String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  parent    Page?     @relation("PageTree", fields: [parentId], references: [id], onDelete: Cascade)
-  children  Page[]    @relation("PageTree")
-  createdBy User?     @relation("PageCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-
-  // Bases de datos tipo Notion
-  database           Page?              @relation("DatabaseRows", fields: [databaseId], references: [id], onDelete: Cascade)
-  rows               Page[]             @relation("DatabaseRows")
-  databaseProperties DatabaseProperty[] @relation("DatabaseProperties")
-  propertyValues     PropertyValue[]    @relation("RowValues")
-  favoritedBy        Favorite[]
-  linkedByIssues     Issue[]            @relation("IssueLinkedPage")
-  projectDatabases   ProjectDatabase[] // proyectos que usan esta página como base de datos de archivos
-
-  @@index([workspaceId])
-  @@index([parentId])
-  @@index([databaseId])
-}
-
-// Página marcada como favorita por un usuario.
-model Favorite {
-  id        String   @id @default(cuid())
-  userId    String
-  pageId    String
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, pageId])
-  @@index([userId])
-}
-
 // ── Issues (seguimiento estilo GitHub) ───────────────────────────────────────
 
 enum IssueStatus {
@@ -357,7 +281,6 @@ model Issue {
   dueDate      DateTime? // fecha límite (alimenta la agenda y el calendario)
   completedAt  DateTime? // momento en que se marcó como HECHA
   authorId     String?
-  linkedPageId String? // ruta vinculada dentro de la base de datos de archivos del proyecto
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
@@ -371,7 +294,6 @@ model Issue {
   workspace     Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   project       Project?           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   author        User?              @relation("IssueAuthor", fields: [authorId], references: [id], onDelete: SetNull)
-  linkedPage    Page?              @relation("IssueLinkedPage", fields: [linkedPageId], references: [id], onDelete: SetNull)
   assignees     IssueAssignee[]
   labels        IssueLabel[]
   comments      IssueComment[]
@@ -384,7 +306,6 @@ model Issue {
   @@unique([workspaceId, number])
   @@index([workspaceId])
   @@index([projectId])
-  @@index([linkedPageId])
 }
 
 // Tabla puente tarea <-> asignado. Una tarea admite hasta 3 (validado en la app).
@@ -595,45 +516,6 @@ model IssueCommentReaction {
 
   @@unique([commentId, userId, emoji])
   @@index([commentId])
-}
-
-enum PropertyType {
-  TEXT
-  NUMBER
-  SELECT
-  DATE
-  CHECKBOX
-  FILE
-}
-
-// Columna de una base de datos (la base de datos es una Page con type=DATABASE).
-model DatabaseProperty {
-  id         String       @id @default(cuid())
-  databaseId String
-  name       String
-  type       PropertyType @default(TEXT)
-  position   Int          @default(0)
-  config     Json? // opciones de SELECT, formato, etc.
-  createdAt  DateTime     @default(now())
-
-  database Page            @relation("DatabaseProperties", fields: [databaseId], references: [id], onDelete: Cascade)
-  values   PropertyValue[]
-
-  @@index([databaseId])
-}
-
-// Valor de una propiedad para una fila concreta.
-model PropertyValue {
-  id         String @id @default(cuid())
-  pageId     String // la fila (Page)
-  propertyId String
-  value      Json?
-
-  page     Page             @relation("RowValues", fields: [pageId], references: [id], onDelete: Cascade)
-  property DatabaseProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-
-  @@unique([pageId, propertyId])
-  @@index([pageId])
 }
 
 // ── Chat entre usuarios ──────────────────────────────────────────────────

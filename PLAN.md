@@ -187,12 +187,11 @@ qubi/
 ├─ src/
 │  ├─ app/                # Rutas (App Router): (auth), (app), api/
 │  ├─ components/         # UI reutilizable (shadcn + propios)
-│  ├─ features/           # Lógica por dominio: editor, database, workspace, auth
+│  ├─ features/           # Lógica por dominio: project, task, time, workspace, auth
 │  ├─ lib/                # db (prisma), auth, storage, utils
 │  ├─ server/             # Server actions, servicios, validaciones (zod)
 │  └─ styles/
 ├─ prisma/                # schema.prisma, migraciones, seed
-├─ collab/                # Servidor Hocuspocus (tiempo real)
 ├─ public/
 ├─ docker-compose.yml     # Postgres + Redis + MinIO (desarrollo)
 ├─ .env.example

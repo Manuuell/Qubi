@@ -11,7 +11,6 @@ import {
   NotificationType,
   Priority,
   ProgressTimerPolicy,
-  PropertyType,
   WorkspaceRole,
 } from "../src/generated/prisma/enums";
 import {
@@ -285,175 +284,6 @@ async function main() {
     },
   });
 
-  // ── Páginas y bases de datos de archivos ──────────────────────────────────
-  // El cuerpo de las páginas es colaborativo (Yjs) y se escribe desde el
-  // editor; aquí se siembra la estructura: títulos, iconos, favoritos,
-  // papelera, enlace público y las bases de datos con sus filas.
-
-  const manual = await prisma.page.create({
-    data: {
-      workspaceId: workspace.id,
-      title: "Manual de marca",
-      icon: "🎨",
-      createdById: admin.id,
-      isPublic: true,
-    },
-  });
-  const actas = await prisma.page.create({
-    data: {
-      workspaceId: workspace.id,
-      title: "Actas de reunión",
-      icon: "📝",
-      createdById: admin.id,
-    },
-  });
-  await prisma.page.create({
-    data: {
-      workspaceId: workspace.id,
-      parentId: actas.id,
-      title: "Acta · arranque del sprint",
-      icon: "📌",
-      createdById: admin.id,
-    },
-  });
-  const notas = await prisma.page.create({
-    data: {
-      workspaceId: workspace.id,
-      title: "Notas de Beto",
-      icon: "🗒️",
-      createdById: member.id,
-    },
-  });
-  await prisma.page.create({
-    data: {
-      workspaceId: workspace.id,
-      title: "Borrador descartado",
-      icon: "🗑️",
-      createdById: member.id,
-      archivedAt: at(4, 11),
-    },
-  });
-
-  await prisma.favorite.createMany({
-    data: [
-      { userId: member.id, pageId: notas.id },
-      { userId: member.id, pageId: manual.id },
-      { userId: admin.id, pageId: actas.id },
-    ],
-  });
-
-  // Base de datos de archivos compartida entre dos proyectos.
-  async function createFileDatabase(
-    title: string,
-    icon: string,
-    projectIds: string[],
-    rows: { title: string; estado: string; notas: string }[],
-  ) {
-    const page = await prisma.page.create({
-      data: {
-        workspaceId: workspace.id,
-        type: "DATABASE",
-        title,
-        icon,
-        createdById: admin.id,
-      },
-    });
-    const estadoProp = await prisma.databaseProperty.create({
-      data: {
-        databaseId: page.id,
-        name: "Estado",
-        type: PropertyType.SELECT,
-        position: 0,
-        config: { options: ["Pendiente", "En curso", "Hecho"] },
-      },
-    });
-    const notasProp = await prisma.databaseProperty.create({
-      data: {
-        databaseId: page.id,
-        name: "Notas",
-        type: PropertyType.TEXT,
-        position: 1,
-      },
-    });
-    for (const row of rows) {
-      const rowPage = await prisma.page.create({
-        data: {
-          workspaceId: workspace.id,
-          databaseId: page.id,
-          title: row.title,
-          createdById: admin.id,
-        },
-      });
-      await prisma.propertyValue.createMany({
-        data: [
-          {
-            pageId: rowPage.id,
-            propertyId: estadoProp.id,
-            value: row.estado,
-          },
-          { pageId: rowPage.id, propertyId: notasProp.id, value: row.notas },
-        ],
-      });
-    }
-    for (const projectId of projectIds) {
-      await prisma.projectDatabase.create({
-        data: { projectId, pageId: page.id },
-      });
-    }
-    return page;
-  }
-
-  const baseAlfa = await createFileDatabase(
-    "Base alfa · material del sitio",
-    "📁",
-    [web.id, ops.id], // compartida entre dos proyectos
-    [
-      {
-        title: "Guía de estilos v3.pdf",
-        estado: "Hecho",
-        notas: "Aprobada por dirección el mes pasado.",
-      },
-      {
-        title: "Fotos del equipo (carpeta)",
-        estado: "En curso",
-        notas: "Faltan las fotos de las dos personas nuevas.",
-      },
-      {
-        title: "Textos de la landing.docx",
-        estado: "En curso",
-        notas: "Pendiente la revisión de marketing.",
-      },
-      {
-        title: "Analítica septiembre.xlsx",
-        estado: "Hecho",
-        notas: "Base para el informe trimestral.",
-      },
-    ],
-  );
-
-  await createFileDatabase(
-    "Entregables de la app",
-    "📦",
-    [app.id],
-    [
-      {
-        title: "Prototipo Figma onboarding",
-        estado: "Hecho",
-        notas: "Versión final validada con usuarios.",
-      },
-      {
-        title: "Checklist de publicación",
-        estado: "Pendiente",
-        notas: "Repasar antes de subir a las tiendas.",
-      },
-      {
-        title: "Contrato pasarela de pagos.pdf",
-        estado: "Hecho",
-        notas: "Firmado; comisiones del 1,4 %.",
-      },
-    ],
-  );
-
   // ── Tareas ────────────────────────────────────────────────────────────────
 
   type TaskDef = {
@@ -468,7 +298,6 @@ async function main() {
     dueDateOffset?: number;
     startDateOffset?: number;
     progressTimerPolicy?: ProgressTimerPolicy;
-    linkedPageId?: string;
     estimateHours?: number;
   };
 
@@ -485,7 +314,6 @@ async function main() {
       labels: ["Frontend", "Diseño"],
       dueDateOffset: -6,
       startDateOffset: -14,
-      linkedPageId: baseAlfa.id,
     },
     {
       project: web,
@@ -744,7 +572,6 @@ async function main() {
         progressTimerPolicy: t.progressTimerPolicy ?? null,
         estimateMinutes:
           t.estimateHours != null ? Math.round(t.estimateHours * 60) : null,
-        linkedPageId: t.linkedPageId ?? null,
         authorId: admin.id,
         assignees: { create: t.assignees.map((u) => ({ userId: u.id })) },
         labels: {

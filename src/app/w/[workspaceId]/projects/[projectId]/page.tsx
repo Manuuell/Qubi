@@ -6,7 +6,6 @@ import {
   Calendar,
   GanttChartSquare,
   BarChart3,
-  Database,
   MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,14 +17,9 @@ import { getWorkspaceMembers } from "@/server/services/member";
 import { getWorkspaceRole } from "@/server/services/time";
 import { getProjectProduction } from "@/server/services/manager";
 import { listLabels } from "@/server/services/label";
-import {
-  listProjectDatabases,
-  listLinkableDatabases,
-} from "@/server/services/project-database";
 import { ProjectTitle } from "@/features/project/components/project-title";
 import { ArchiveProjectButton } from "@/features/project/components/archive-project-button";
 import { ProjectProduction } from "@/features/project/components/project-production";
-import { ProjectDatabases } from "@/features/project/components/project-databases";
 import { NewTaskDialog } from "@/features/task/components/new-task-dialog";
 import { TaskBoard } from "@/features/task/components/task-board";
 import { TaskList } from "@/features/task/components/task-list";
@@ -37,7 +31,6 @@ const VIEWS = [
   { key: "list", label: "Lista", icon: List },
   { key: "calendar", label: "Calendario", icon: Calendar },
   { key: "gantt", label: "Cronograma", icon: GanttChartSquare },
-  { key: "databases", label: "Bases de datos", icon: Database },
   {
     key: "production",
     label: "Producción",
@@ -71,11 +64,9 @@ export default async function ProjectPage({
         ? "calendar"
         : rawView === "gantt"
           ? "gantt"
-          : rawView === "databases"
-            ? "databases"
-            : rawView === "production" && isAdmin
-              ? "production"
-              : "board";
+          : rawView === "production" && isAdmin
+            ? "production"
+            : "board";
 
   const [tasks, members, labels] = await Promise.all([
     listProjectTasks(projectId, user.id),
@@ -180,13 +171,6 @@ export default async function ProjectPage({
             projectId={projectId}
           />
         )}
-        {view === "databases" && (
-          <DatabasesTab
-            projectId={projectId}
-            workspaceId={workspaceId}
-            userId={user.id}
-          />
-        )}
         {view === "production" && isAdmin && (
           <ProductionTab
             projectId={projectId}
@@ -196,29 +180,6 @@ export default async function ProjectPage({
         )}
       </div>
     </div>
-  );
-}
-
-async function DatabasesTab({
-  projectId,
-  workspaceId,
-  userId,
-}: {
-  projectId: string;
-  workspaceId: string;
-  userId: string;
-}) {
-  const [databases, linkable] = await Promise.all([
-    listProjectDatabases(projectId, userId),
-    listLinkableDatabases(projectId, workspaceId, userId),
-  ]);
-  return (
-    <ProjectDatabases
-      workspaceId={workspaceId}
-      projectId={projectId}
-      databases={databases}
-      linkable={linkable}
-    />
   );
 }
 

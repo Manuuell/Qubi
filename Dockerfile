@@ -2,7 +2,7 @@
 # ============================================================
 # Qubi — imagen de producción.
 #   deps    -> instala dependencias
-#   tooling -> deps + código + cliente Prisma (para migraciones y colaboración)
+#   tooling -> deps + código + cliente Prisma (para migraciones y seed)
 #   builder -> compila Next.js (salida standalone)
 #   runner  -> runtime mínimo de la app Next.js
 # ============================================================
@@ -14,7 +14,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 # 2) Tooling: código + cliente Prisma generado (sin compilar Next).
-#    Lo usan los servicios "migrate" (prisma migrate deploy) y "collab" (tsx).
+#    Lo usan los servicios "migrate" (prisma migrate deploy) y "seed".
 FROM node:22-slim AS tooling
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -24,9 +24,6 @@ RUN npx prisma generate
 # 3) Build de Next.js
 FROM tooling AS builder
 ENV NEXT_TELEMETRY_DISABLED=1
-# Las variables NEXT_PUBLIC_* se incrustan en build time: hay que pasarlas como ARG.
-ARG NEXT_PUBLIC_COLLAB_URL="ws://localhost:1234"
-ENV NEXT_PUBLIC_COLLAB_URL=$NEXT_PUBLIC_COLLAB_URL
 # Valores ficticios: el build no toca la BD (rutas dinámicas), pero algunas
 # librerías esperan que las variables existan.
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"

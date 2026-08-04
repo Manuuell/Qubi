@@ -1,11 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Clock, FolderOpen, Paperclip } from "lucide-react";
+import { ArrowLeft, Clock, Paperclip } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getTaskDetail } from "@/server/services/task";
 import { getWorkspaceMembers } from "@/server/services/member";
 import { listLabels } from "@/server/services/label";
-import { listProjectDatabases } from "@/server/services/project-database";
 import { getWorkspaceRole, isAdminRole } from "@/server/lib/permissions";
 import {
   IssueCommentKind,
@@ -21,7 +20,6 @@ import { TaskStatusSelect } from "@/features/task/components/task-status-select"
 import { TaskTypeSelect } from "@/features/task/components/task-type-select";
 import { TaskAssigneeSelect } from "@/features/task/components/task-assignee-select";
 import { TaskLabelsEditor } from "@/features/task/components/task-labels-editor";
-import { TaskLinkedPageSelect } from "@/features/task/components/task-linked-page-select";
 import { TaskPrioritySelect } from "@/features/task/components/task-priority-select";
 import { TaskStartDateInput } from "@/features/task/components/task-start-date-input";
 import { TaskDueDateInput } from "@/features/task/components/task-due-date-input";
@@ -181,16 +179,11 @@ export default async function TaskDetailPage({
 
   const projectId = task.project?.id ?? "";
 
-  const [members, workspaceLabels, role, linkableDatabases] = await Promise.all(
-    [
-      getWorkspaceMembers(workspaceId),
-      listLabels(workspaceId, user.id),
-      getWorkspaceRole(workspaceId, user.id),
-      projectId
-        ? listProjectDatabases(projectId, user.id)
-        : Promise.resolve([]),
-    ],
-  );
+  const [members, workspaceLabels, role] = await Promise.all([
+    getWorkspaceMembers(workspaceId),
+    listLabels(workspaceId, user.id),
+    getWorkspaceRole(workspaceId, user.id),
+  ]);
   const isAdmin = isAdminRole(role);
   const memberOptions = members.map((m) => ({
     id: m.user.id,
@@ -395,35 +388,10 @@ export default async function TaskDetailPage({
             />
           </Field>
         </div>
-        {linkableDatabases.length > 0 && (
-          <div className="sm:col-span-2">
-            <Field label="Información vinculada">
-              <TaskLinkedPageSelect
-                taskId={task.id}
-                workspaceId={workspaceId}
-                projectId={projectId}
-                linkedPageId={task.linkedPageId}
-                options={linkableDatabases}
-              />
-            </Field>
-          </div>
-        )}
       </Card>
 
       <p className="text-muted-foreground mt-3 flex items-center gap-1.5 px-1 text-xs">
         Creada por {personName(task.author)}
-        {task.linkedPage && (
-          <>
-            {" · "}
-            <Link
-              href={`/w/${workspaceId}/${task.linkedPage.id}`}
-              className="hover:text-foreground inline-flex items-center gap-1 underline"
-            >
-              <FolderOpen className="size-3" />
-              {task.linkedPage.title || "Ver información vinculada"}
-            </Link>
-          </>
-        )}
       </p>
 
       <SegmentedControl

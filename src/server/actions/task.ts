@@ -31,7 +31,6 @@ export async function createTaskAction(input: {
   labelIds?: string[];
   dueDate?: string | null;
   startDate?: string | null;
-  linkedPageId?: string | null;
 }) {
   if (!input.title.trim()) return;
   const user = await getCurrentUser();
@@ -47,7 +46,6 @@ export async function createTaskAction(input: {
     labelIds: input.labelIds,
     dueDate: input.dueDate ? new Date(`${input.dueDate}T00:00:00`) : null,
     startDate: input.startDate ? new Date(`${input.startDate}T00:00:00`) : null,
-    linkedPageId: input.linkedPageId,
   });
   revalidateProject(input.workspaceId, input.projectId);
   return issue;
@@ -182,17 +180,6 @@ export async function setTaskBodyAction(input: {
 }) {
   const user = await getCurrentUser();
   await taskService.setTaskBody(input.taskId, user.id, input.body);
-  revalidateProject(input.workspaceId, input.projectId);
-}
-
-export async function linkTaskPageAction(input: {
-  taskId: string;
-  workspaceId: string;
-  projectId: string;
-  linkedPageId: string | null;
-}) {
-  const user = await getCurrentUser();
-  await taskService.linkTaskPage(input.taskId, user.id, input.linkedPageId);
   revalidateProject(input.workspaceId, input.projectId);
 }
 

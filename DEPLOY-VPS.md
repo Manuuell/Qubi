@@ -11,9 +11,8 @@ VPS, hace `git pull`, reconstruye y levanta los contenedores.
 - **minio** — almacenamiento de archivos/imágenes.
 - **migrate** — aplica las migraciones de Prisma en cada despliegue y termina.
 - **app** — Next.js (standalone) escuchando en `127.0.0.1:3600`.
-- **collab** — servidor de colaboración Yjs/Hocuspocus en `127.0.0.1:1234`.
 
-`app`, `collab` y `minio` escuchan **solo en localhost**; el **reverse proxy del host**
+`app` y `minio` escuchan **solo en localhost**; el **reverse proxy del host**
 (nginx) los expone con HTTPS.
 
 ## 1. Configuración única en el VPS
@@ -40,8 +39,8 @@ Crea un registro **A** apuntando `qubi.tudominio.com` → IP del VPS.
 
 ## 3. Reverse proxy del host (nginx) + HTTPS
 
-Crea un vhost (mismo patrón que tus otros proyectos). Enruta la app, el WebSocket
-de colaboración (quitando `/collab`) y los archivos de MinIO (quitando `/files`):
+Crea un vhost (mismo patrón que tus otros proyectos). Enruta la app y los archivos
+de MinIO (quitando `/files`):
 
 ```nginx
 server {
@@ -61,17 +60,6 @@ server {
         proxy_set_header Connection "upgrade";
     }
 
-    # Colaboración en tiempo real (WebSocket Hocuspocus). NO se reescribe la ruta:
-    # el provider v4 conecta a la URL tal cual y manda el nombre del doc por protocolo.
-    location /collab {
-        proxy_pass http://127.0.0.1:1234;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_read_timeout 86400;
-    }
-
     # Archivos públicos (MinIO). La barra final quita el prefijo /files.
     location /files/ {
         proxy_pass http://127.0.0.1:9000/;
@@ -86,8 +74,7 @@ Luego activa HTTPS con Certbot:
 sudo certbot --nginx -d qubi.tudominio.com
 ```
 
-Estas URLs deben coincidir con el `.env`:
-`NEXT_PUBLIC_COLLAB_URL=wss://qubi.tudominio.com/collab` y
+Esta URL debe coincidir con el `.env`:
 `S3_PUBLIC_URL=https://qubi.tudominio.com/files`.
 
 ## 4. Despliegue automático (GitHub Actions)
@@ -120,8 +107,7 @@ manager se ve su producción, sus horas y sus avances; y desde la del trabajador
 se ve el feedback del manager. El seed deja contenido en todas las pantallas:
 3 proyectos, 19 tareas en los tres estados, avances con evidencia, 4 semanas de
 horas, sesiones de cronómetro (incluida una descartada por corta), chat 1 a 1 y
-por proyecto, notificaciones, bases de datos de archivos, páginas, favoritos y
-papelera.
+por proyecto, y notificaciones.
 
 > El servicio `seed` está detrás de un perfil de Compose, así que **no** se
 > ejecuta en los despliegues automáticos. Solo toca el espacio `qubi-demo` y las
@@ -136,7 +122,6 @@ papelera.
 ```bash
 cd /opt/qubi
 docker compose -f docker-compose.prod.yml logs -f app      # logs de la app
-docker compose -f docker-compose.prod.yml logs -f collab   # logs de colaboración
 docker compose -f docker-compose.prod.yml ps               # estado
 docker compose -f docker-compose.prod.yml restart app
 docker compose -f docker-compose.prod.yml run --rm seed    # refrescar la demo
@@ -145,7 +130,5 @@ docker compose -f docker-compose.prod.yml run --rm seed    # refrescar la demo
 ## Notas
 
 - Las migraciones se aplican solas (servicio `migrate`) en cada despliegue.
-- `NEXT_PUBLIC_COLLAB_URL` se incrusta en el build; si cambias el dominio, hay que
-  reconstruir (`up -d --build`).
 - Google OAuth: rellena `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` en el `.env` y añade
   como URI de redirección `https://qubi.tudominio.com/api/auth/callback/google`.

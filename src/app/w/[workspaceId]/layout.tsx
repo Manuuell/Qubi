@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getWorkspace, getUserWorkspaces } from "@/server/services/workspace";
-import { getPageTree, getFavoritePages } from "@/server/services/page";
 import { listProjects } from "@/server/services/project";
 import { getInbox } from "@/server/services/notification";
 import { getUnreadChatCount } from "@/server/services/chat";
@@ -29,9 +28,7 @@ export default async function WorkspaceLayout({
   if (!workspace) notFound();
 
   const [
-    pages,
     workspaces,
-    favorites,
     projects,
     ring,
     inbox,
@@ -39,9 +36,7 @@ export default async function WorkspaceLayout({
     chatUnreadCount,
     role,
   ] = await Promise.all([
-    getPageTree(workspaceId),
     getUserWorkspaces(user.id),
-    getFavoritePages(user.id, workspaceId),
     listProjects(workspaceId),
     readRing(),
     getInbox({ id: user.id, email: user.email }),
@@ -74,13 +69,7 @@ export default async function WorkspaceLayout({
                 icon: w.icon,
                 isOwner: w.ownerId === user.id,
               }))}
-              pages={pages}
               projects={projects}
-              favorites={favorites.map((p) => ({
-                id: p.id,
-                title: p.title,
-                type: p.type,
-              }))}
               userId={user.id}
               userName={user.name ?? user.email}
               userEmail={user.email}

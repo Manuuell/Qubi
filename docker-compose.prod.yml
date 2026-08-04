@@ -1,8 +1,8 @@
 # ============================================================
 # Qubi — orquestación de PRODUCCIÓN en el VPS.
-#   postgres + minio (datos)  ·  migrate (one-shot)  ·  app + collab
-# app y collab escuchan SOLO en localhost; el reverse proxy del host
-# (nginx/Caddy) los expone con HTTPS. Variables en .env (NO se commitea).
+#   postgres + minio (datos)  ·  migrate (one-shot)  ·  app
+# app escucha SOLO en localhost; el reverse proxy del host
+# (nginx/Caddy) lo expone con HTTPS. Variables en .env (NO se commitea).
 # Uso:  docker compose -f docker-compose.prod.yml up -d --build
 # ============================================================
 
@@ -77,9 +77,6 @@ services:
     build:
       context: .
       target: runner
-      args:
-        # Se incrusta en el bundle del navegador durante el build.
-        NEXT_PUBLIC_COLLAB_URL: ${NEXT_PUBLIC_COLLAB_URL}
     restart: unless-stopped
     environment:
       # Sin esto, el contenedor corre en UTC y "hoy"/el cronómetro/las horas
@@ -94,25 +91,6 @@ services:
         condition: service_completed_successfully
     ports:
       - "127.0.0.1:3600:3000"
-
-  # Servidor de colaboración en tiempo real (Yjs / Hocuspocus).
-  collab:
-    build:
-      context: .
-      target: tooling
-    command: npx tsx collab/server.ts
-    restart: unless-stopped
-    environment:
-      TZ: America/Bogota
-    env_file:
-      - .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-    ports:
-      - "127.0.0.1:1234:1234"
 
 volumes:
   qubi_pgdata:

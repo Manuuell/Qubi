@@ -5,10 +5,6 @@ tareas a sus miembros, sigue su estado en un tablero y registra las horas dedica
 cada proyecto. **Gratuita**, con cuentas propias e inicio de sesión con Google,
 autoalojada en un VPS.
 
-Está construida sobre una base tipo Notion (páginas con editor de bloques y
-colaboración en tiempo real), pero la gestión de tareas y horas es la experiencia
-principal.
-
 El plan de trabajo completo y el roadmap por fases está en [PLAN.md](./PLAN.md).
 
 ## Funcionalidades
@@ -32,8 +28,6 @@ El plan de trabajo completo y el roadmap por fases está en [PLAN.md](./PLAN.md)
   no cuentan** como horas (se avisa y el avance sí se conserva). Mientras se
   documenta, el reloj **se pausa o cuenta la mitad**, según lo que decida el
   manager al crear el proyecto (afinable tarea por tarea).
-- **Páginas y notas** — editor de bloques tipo Notion con colaboración en tiempo real
-  (Yjs), bases de datos, favoritos, papelera y enlaces públicos de solo lectura.
 
 ## Stack
 
@@ -42,7 +36,6 @@ El plan de trabajo completo y el roadmap por fases está en [PLAN.md](./PLAN.md)
 - **Tailwind CSS v4** + **shadcn/ui**
 - **Auth.js (NextAuth v5)** — Google OAuth y email/contraseña
 - **Redis** (presencia/caché) y **MinIO** (almacenamiento de archivos S3) en local
-- **Yjs + Hocuspocus** para la edición colaborativa de páginas
 - Calidad: ESLint + Prettier + Husky + lint-staged
 
 ## Requisitos
@@ -64,11 +57,8 @@ docker compose up -d
 # 4. Aplicar las migraciones de la base de datos
 npm run db:migrate
 
-# 5. Arrancar la app (en una terminal)
+# 5. Arrancar la app
 npm run dev
-
-# 6. (Opcional) Servidor de colaboración para el editor de páginas (OTRA terminal)
-npm run collab
 ```
 
 Abre [http://localhost:3000](http://localhost:3000).
@@ -97,13 +87,9 @@ DATABASE_URL="postgresql://qubi:qubi_dev_password@localhost:5433/qubi?schema=pub
 AUTH_SECRET="genera-uno-con: openssl rand -base64 32"
 ```
 
-Opcionales: `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` (login con Google), las `S3_*`
-(MinIO, para subir imágenes) y `NEXT_PUBLIC_COLLAB_URL` (editor colaborativo). El
-listado completo está en [.env.production.example](./.env.production.example).
-
-> El editor de bloques usa colaboración en tiempo real (Yjs), así que para editar
-> páginas necesita el servidor `npm run collab` (Hocuspocus, ws://localhost:1234)
-> corriendo en paralelo. La gestión de tareas y horas no lo necesita.
+Opcionales: `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` (login con Google) y las `S3_*`
+(MinIO, para subir archivos). El listado completo está en
+[.env.production.example](./.env.production.example).
 
 > Postgres se expone en el puerto **5433** del host (para no chocar con otros Postgres
 > locales). La consola de MinIO está en [http://localhost:9001](http://localhost:9001)
@@ -116,7 +102,6 @@ listado completo está en [.env.production.example](./.env.production.example).
 | `npm run dev`         | Servidor de desarrollo                |
 | `npm run build`       | Build de producción                   |
 | `npm run start`       | Servir el build                       |
-| `npm run collab`      | Servidor de colaboración (Hocuspocus) |
 | `npm run lint`        | ESLint                                |
 | `npm run format`      | Formatear con Prettier                |
 | `npm run typecheck`   | Comprobar tipos (tsc)                 |
@@ -132,11 +117,10 @@ listado completo está en [.env.production.example](./.env.production.example).
 src/
 ├─ app/          # Rutas (App Router): w/[workspaceId]/{projects,tasks,agenda,hours,...}
 ├─ components/   # UI (shadcn + propios)
-├─ features/     # Lógica por dominio: project, task, time, workspace, page, editor, ...
+├─ features/     # Lógica por dominio: project, task, time, workspace, chat, ...
 ├─ lib/          # db (prisma), auth, storage, utils
 ├─ server/       # Server actions y servicios (por dominio)
 └─ generated/    # Cliente Prisma (generado, no se commitea)
 prisma/          # schema.prisma y migraciones
-collab/          # Servidor Hocuspocus (tiempo real)
 docker-compose.yml
 ```

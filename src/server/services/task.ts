@@ -151,7 +151,6 @@ export async function createTask(input: {
   labelIds?: string[];
   dueDate?: Date | null;
   startDate?: Date | null;
-  linkedPageId?: string | null;
 }) {
   await assertWorkspaceMember(input.workspaceId, input.userId);
   const assigneeIds = [...new Set(input.assigneeIds ?? [])].slice(
@@ -178,7 +177,6 @@ export async function createTask(input: {
       priority: input.priority ?? Priority.MEDIUM,
       dueDate: input.dueDate ?? null,
       startDate: input.startDate ?? null,
-      linkedPageId: input.linkedPageId ?? null,
       authorId: input.userId,
       assignees: { create: assigneeIds.map((userId) => ({ userId })) },
       labels: { create: labelIds.map((labelId) => ({ labelId })) },
@@ -380,15 +378,6 @@ export async function setTaskStartDate(
   return prisma.issue.update({ where: { id: taskId }, data: { startDate } });
 }
 
-export async function linkTaskPage(
-  taskId: string,
-  userId: string,
-  linkedPageId: string | null,
-) {
-  await assertTaskAccess(taskId, userId);
-  return prisma.issue.update({ where: { id: taskId }, data: { linkedPageId } });
-}
-
 // Detalle completo de una tarea por número (#n): proyecto, personas, etiquetas,
 // comentarios, adjuntos, historial de estados y horas invertidas. Todo queda
 // visible aunque la tarea ya esté Hecha.
@@ -414,7 +403,6 @@ export async function getTaskDetail(
       labels: {
         select: { label: { select: { id: true, name: true, color: true } } },
       },
-      linkedPage: { select: { id: true, title: true, icon: true } },
       attachments: {
         orderBy: { createdAt: "desc" },
         include: { uploadedBy: { select: personSelect } },

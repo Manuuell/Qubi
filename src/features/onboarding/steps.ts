@@ -11,11 +11,6 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     body: "Te damos un repaso rápido de lo esencial para que le saques provecho desde ya. Puedes salir cuando quieras.",
   },
   {
-    target: "tour-search",
-    title: "Busca cualquier cosa",
-    body: "Encuentra páginas, bases de datos y comentarios al instante con ⌘K (o Ctrl K en Windows).",
-  },
-  {
     target: "tour-home",
     title: "Vuelve al inicio",
     body: "Este botón te trae de regreso al panel principal del espacio desde cualquier parte de Qubi.",
@@ -27,18 +22,13 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   },
   {
     target: "tour-create",
-    title: "Crea contenido",
-    body: "Un proyecto agrupa tareas con tablero, lista, calendario y cronograma. Las páginas son para notas y documentos, y las bases de datos organizan información en tablas, tableros, calendarios o galerías.",
+    title: "Crea un proyecto",
+    body: "Un proyecto agrupa las tareas del equipo y las muestra en tablero, lista, calendario y cronograma.",
   },
   {
     target: "tour-projects",
     title: "Tus proyectos",
     body: "Aquí aparecen los proyectos que ya creaste. Toca uno para ver sus tareas.",
-  },
-  {
-    target: "tour-databases",
-    title: "Bases de datos",
-    body: "Guarda documentos, carpetas o información de referencia. Puedes crearlas sueltas o dentro de un proyecto, y compartirlas entre varios.",
   },
   {
     target: "tour-chat",
@@ -54,11 +44,6 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     target: "tour-members",
     title: "Tu equipo",
     body: "Invita personas por correo y gestiona sus roles: propietario, admin, miembro o invitado.",
-  },
-  {
-    target: "tour-trash",
-    title: "Papelera",
-    body: "Lo que borras primero va aquí. Puedes restaurarlo, revisarlo antes de decidir, o vaciarla del todo.",
   },
   {
     target: "tour-notifications",
