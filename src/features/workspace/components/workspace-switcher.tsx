@@ -146,7 +146,7 @@ export function WorkspaceSwitcher({
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}
         title={`¿Eliminar el espacio "${deleting?.name}"?`}
-        description="Se borrarán también sus proyectos, tareas, horas y páginas. Esta acción no se puede deshacer."
+        description="Se borrarán también sus proyectos, tareas y horas. Esta acción no se puede deshacer."
         confirmLabel="Eliminar"
         pending={pending}
         onConfirm={() => deleting && deleteWorkspace(deleting)}
