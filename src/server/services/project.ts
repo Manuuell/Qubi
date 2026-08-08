@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ProgressTimerPolicy, ProjectStatus } from "@/generated/prisma/enums";
+import { assertWorkspaceAdmin } from "@/server/lib/permissions";
 
 // Colores por defecto; rotan según el nº de proyectos del espacio.
 const PALETTE = [
@@ -60,8 +61,7 @@ export async function createProject(
   });
 }
 
-// Cambia la política por defecto del proyecto (solo manager: la comprobación
-// de rol la hace la server action).
+// Cambia la política por defecto del proyecto (solo OWNER/ADMIN).
 export async function setProjectProgressPolicy(
   projectId: string,
   userId: string,
@@ -69,6 +69,7 @@ export async function setProjectProgressPolicy(
 ) {
   const project = await getProject(projectId, userId);
   if (!project) throw new Error("Proyecto no encontrado");
+  await assertWorkspaceAdmin(project.workspaceId, userId);
   return prisma.project.update({
     where: { id: projectId },
     data: { progressTimerPolicy },
