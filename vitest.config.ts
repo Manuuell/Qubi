@@ -1,9 +1,10 @@
 import { defineConfig } from "vitest/config";
 import tsconfigPaths from "vite-tsconfig-paths";
 
-// Solo cubre lógica pura (sin base de datos): permisos, rate-limit,
-// menciones, formateo. Los servicios que hablan con Prisma necesitarían una
-// base de datos de pruebas — fuera de alcance por ahora.
+// Cubre lógica pura (permisos, rate-limit, menciones, formateo) y, donde
+// vale la pena, servicios con Prisma mockeado (ver src/server/services/
+// time.test.ts para la máquina de estados del cronómetro). Pruebas de
+// integración contra una base real siguen fuera de alcance por ahora.
 export default defineConfig({
   plugins: [tsconfigPaths()],
   test: {
