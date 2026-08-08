@@ -12,8 +12,6 @@ import {
 import * as taskService from "@/server/services/task";
 import { uploadFile } from "@/lib/storage";
 
-const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
-
 function revalidateProject(workspaceId: string, projectId: string) {
   revalidatePath(`/w/${workspaceId}/projects/${projectId}`);
   // "Mi agenda" muestra tareas de todos los proyectos: mantenerla fresca.
@@ -205,7 +203,9 @@ export async function addTaskCommentAction(formData: FormData) {
 const MAX_FILES_PER_NOTE = 5;
 
 // Sube los archivos que vengan en el campo "files" (capturas pegadas del
-// portapapeles, documentos arrastrados…). Acepta cualquier tipo.
+// portapapeles, documentos arrastrados…). Acepta cualquier tipo salvo
+// ejecutables y formatos que el navegador ejecutaría solo (ver
+// assertUploadAllowed en @/lib/storage).
 async function extractUploads(formData: FormData) {
   const files = formData
     .getAll("files")
@@ -217,9 +217,6 @@ async function extractUploads(formData: FormData) {
   }
   const uploads: taskService.TaskUpload[] = [];
   for (const file of files) {
-    if (file.size > MAX_ATTACHMENT_BYTES) {
-      throw new Error(`"${file.name}" supera los 8 MB.`);
-    }
     uploads.push({
       url: await uploadFile(file),
       name: file.name,
@@ -284,9 +281,6 @@ export async function addTaskAttachmentAction(formData: FormData) {
   const projectId = String(formData.get("projectId") ?? "");
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return;
-  if (file.size > MAX_ATTACHMENT_BYTES) {
-    throw new Error("El archivo no puede superar 8 MB.");
-  }
   const url = await uploadFile(file);
   const user = await getCurrentUser();
   await taskService.addTaskAttachment(taskId, user.id, {

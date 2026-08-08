@@ -7,8 +7,6 @@ import * as chat from "@/server/services/chat";
 import { uploadFile } from "@/lib/storage";
 import { checkRateLimit } from "@/server/lib/rate-limit";
 
-const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
-
 export async function startDirectConversationAction(input: {
   workspaceId: string;
   otherUserId: string;
@@ -30,9 +28,6 @@ export async function sendChatMessageAction(formData: FormData) {
 
   let attachmentUrl: string | null = null;
   if (file instanceof File && file.size > 0) {
-    if (file.size > MAX_ATTACHMENT_BYTES) {
-      throw new Error("El adjunto no puede superar 8 MB.");
-    }
     attachmentUrl = await uploadFile(file);
   }
 

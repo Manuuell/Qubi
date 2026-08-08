@@ -17,7 +17,6 @@ import {
 } from "@/server/services/time";
 import { uploadFile } from "@/lib/storage";
 
-const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 const MAX_FILES_PER_PROGRESS = 5;
 
 // Devuelve el temporizador ya montado (con la tarea y la política que aplica)
@@ -101,9 +100,6 @@ export async function addSessionProgressAction(formData: FormData) {
 
   const uploads: ProgressUpload[] = [];
   for (const file of files) {
-    if (file.size > MAX_UPLOAD_BYTES) {
-      throw new Error(`"${file.name}" supera los 8 MB.`);
-    }
     uploads.push({
       url: await uploadFile(file),
       name: file.name,

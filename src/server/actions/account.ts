@@ -10,6 +10,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { uploadFile } from "@/lib/storage";
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+// Nota: "image/*" incluye image/svg+xml, que puede llevar <script> incrustado.
+// uploadFile() lo rechaza igual (ver BLOCKED_MIME_TYPES en @/lib/storage) aunque
+// pase este chequeo de "es una imagen".
 
 type NameFormState = { error?: string; info?: string };
 
@@ -42,11 +45,8 @@ export async function updateProfileImageAction(formData: FormData) {
   if (!(file instanceof File) || !file.type.startsWith("image/")) {
     throw new Error("Selecciona una imagen válida.");
   }
-  if (file.size > MAX_AVATAR_BYTES) {
-    throw new Error("La imagen no puede superar 5 MB.");
-  }
 
-  const url = await uploadFile(file);
+  const url = await uploadFile(file, MAX_AVATAR_BYTES);
   await prisma.user.update({ where: { id: user.id }, data: { image: url } });
   revalidatePath("/account", "layout");
   return { url };
