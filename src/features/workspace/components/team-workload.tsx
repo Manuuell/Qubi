@@ -253,7 +253,7 @@ function DayCell({
           toca de esa jornada, así se comparan los días de un vistazo. */}
       <div className="flex h-20 flex-col justify-end gap-px">
         {over > 0 && (
-          <div className="bg-destructive text-destructive-foreground mb-px flex items-center justify-center gap-1 rounded-lg px-1 py-1 text-center text-[10px] leading-tight font-semibold">
+          <div className="bg-destructive text-destructive-foreground mb-px flex items-center justify-center gap-1 rounded-lg px-1 py-1 text-center text-[11px] leading-tight font-semibold">
             <TriangleAlert className="size-3 shrink-0" />
             <span>+{hoursLabel(over)} h</span>
           </div>
@@ -262,7 +262,7 @@ function DayCell({
             de las horas que ya se trabajaron de verdad. */}
         {day.plannedMinutes > 0 && (
           <div
-            className="border-primary/60 text-primary/80 flex min-h-1.5 shrink-0 items-center justify-center rounded-lg border border-dashed text-[9px] font-medium"
+            className="border-primary/60 text-primary/80 flex min-h-1.5 shrink-0 items-center justify-center rounded-lg border border-dashed text-[10px] font-medium"
             style={{
               height: `${capacityPercent(day.plannedMinutes, dailyCapacity)}%`,
             }}
@@ -273,7 +273,7 @@ function DayCell({
           </div>
         )}
         {day.plannedMinutes === 0 && day.unestimatedTasks > 0 && (
-          <div className="border-muted-foreground/40 text-muted-foreground flex h-4 shrink-0 items-center justify-center rounded-lg border border-dashed text-[9px]">
+          <div className="border-muted-foreground/40 text-muted-foreground flex h-4 shrink-0 items-center justify-center rounded-lg border border-dashed text-[10px]">
             {day.unestimatedTasks}
           </div>
         )}
@@ -291,7 +291,7 @@ function DayCell({
       </div>
       {busy > 0 && (
         <span
-          className={`pt-0.5 text-center text-[10px] tabular-nums ${
+          className={`pt-0.5 text-center text-[11px] tabular-nums ${
             level === "over"
               ? "text-destructive font-semibold"
               : "text-muted-foreground"
