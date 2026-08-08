@@ -71,7 +71,7 @@ export default async function AccountPage() {
           <ThemeSection />
         </Card>
 
-        <Card variant="glass">
+        <Card variant="glass" id="password">
           <CardHeader>
             <CardTitle>Contraseña</CardTitle>
             <CardDescription>

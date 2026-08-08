@@ -139,7 +139,7 @@ export function AccountMenu({
               Tu perfil
             </Link>
             <Link
-              href="/account"
+              href="/account#password"
               onClick={closeAndNavigate}
               className="hover:bg-accent transition-ios flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-sm"
             >
