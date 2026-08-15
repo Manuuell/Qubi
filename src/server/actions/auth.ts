@@ -13,6 +13,7 @@ import {
   sendVerificationEmail,
 } from "@/server/services/auth-email";
 import { checkRateLimit } from "@/server/lib/rate-limit";
+import { getClientIp } from "@/server/lib/client-ip";
 
 export type FormState = {
   error?: string;
@@ -76,6 +77,23 @@ export async function registerAction(
   if (!email.includes("@")) return { error: "Introduce un email válido." };
   if (password.length < 6) {
     return { error: "La contraseña debe tener al menos 6 caracteres." };
+  }
+
+  // Al contrario que en el login, aquí limitar por email no sirve de nada: un
+  // script de altas masivas usa uno distinto cada vez, crea miles de cuentas y
+  // de paso convierte nuestro SMTP en un cañón de correos de verificación. Por
+  // eso se limita por IP, y si no hay proxy que la aporte (desarrollo) todas
+  // las altas comparten un mismo cubo. Va después de validar el formato para
+  // no gastarle el cupo a quien simplemente se equivoca al teclear.
+  const ip = await getClientIp();
+  const rateLimit = checkRateLimit(`register:${ip ?? "sin-ip"}`, {
+    max: 10,
+    windowMs: 60 * 60_000,
+  });
+  if (!rateLimit.ok) {
+    return {
+      error: "Se han creado demasiadas cuentas desde aquí. Prueba más tarde.",
+    };
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
