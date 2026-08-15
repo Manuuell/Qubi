@@ -17,7 +17,6 @@ export async function setHoursAction(input: {
   await timeService.setTimesheetHours(
     input.workspaceId,
     user.id,
-    user.email,
     input.projectId,
     keyToDbDate(input.dateKey),
     minutes,

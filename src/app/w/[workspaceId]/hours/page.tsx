@@ -28,7 +28,6 @@ import { TeamTimesheet } from "@/features/time/components/team-timesheet";
 import { MonthlySummary } from "@/features/time/components/monthly-summary";
 import { WorkTimer } from "@/features/time/components/work-timer";
 import { DailyProgress } from "@/features/time/components/daily-progress";
-import { isTrustedTimeEditor } from "@/server/lib/permissions";
 
 const fmt = new Intl.DateTimeFormat("es-ES", {
   day: "numeric",
@@ -128,7 +127,7 @@ export default async function HoursPage({
           anchor={anchor}
           view={view}
           userId={user.id}
-          editable={isTrustedTimeEditor(user.email)}
+          editable={isAdmin}
         />
       )}
     </div>

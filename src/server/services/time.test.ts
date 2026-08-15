@@ -26,10 +26,10 @@ vi.mock("@/server/services/task", () => ({
   addTaskComment: vi.fn(),
 }));
 vi.mock("@/server/lib/permissions", () => ({
+  assertCanEditTimeManually: vi.fn(),
   assertWorkspaceAdmin: vi.fn(),
   assertWorkspaceMember: vi.fn(),
   getWorkspaceRole: vi.fn(),
-  isTrustedTimeEditor: vi.fn(),
 }));
 
 const { startTask } = await import("@/server/services/task");

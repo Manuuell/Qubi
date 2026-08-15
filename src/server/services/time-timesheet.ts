@@ -8,8 +8,8 @@ import {
   mondayKeyOf,
 } from "@/features/time/week";
 import {
+  assertCanEditTimeManually,
   assertWorkspaceMember,
-  isTrustedTimeEditor,
 } from "@/server/lib/permissions";
 
 export type TimesheetRow = {
@@ -90,24 +90,18 @@ export async function getWeekTimesheet(
 
 // Fija las horas (en minutos) de un proyecto+día para el usuario.
 // Un único registro por (proyecto, usuario, día); minutos<=0 lo elimina.
-// Edición MANUAL: solo los correos de confianza pueden hacerlo (ver
-// TRUSTED_TIME_EDITOR_EMAILS). El resto solo acumula horas con el cronómetro
-// (ver addTimeEntryMinutes/stopTimer en time-timer.ts, que no pasan por esta
-// función).
+// Edición MANUAL: solo OWNER/ADMIN del espacio. El resto solo acumula horas
+// trabajando con el cronómetro (ver addTimeEntryMinutes/stopTimer en
+// time-timer.ts, que no pasan por esta función).
 export async function setTimesheetHours(
   workspaceId: string,
   userId: string,
-  userEmail: string | null | undefined,
   projectId: string,
   date: Date,
   minutes: number,
 ) {
-  await assertWorkspaceMember(workspaceId, userId);
-  if (!isTrustedTimeEditor(userEmail)) {
-    throw new Error(
-      "Solo un administrador de confianza puede editar horas manualmente",
-    );
-  }
+  await assertCanEditTimeManually(workspaceId, userId);
+
   const project = await prisma.project.findFirst({
     where: { id: projectId, workspaceId },
     select: { id: true },

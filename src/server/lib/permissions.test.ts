@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { WorkspaceRole } from "@/generated/prisma/enums";
-import { isAdminRole, isTrustedTimeEditor } from "./permissions";
+
+const prismaMock = { workspaceMember: { findUnique: vi.fn() } };
+vi.mock("@/lib/db", () => ({ prisma: prismaMock }));
+
+const { assertCanEditTimeManually, isAdminRole } =
+  await import("./permissions");
 
 describe("isAdminRole", () => {
   it("OWNER y ADMIN son admin", () => {
@@ -18,17 +23,28 @@ describe("isAdminRole", () => {
   });
 });
 
-describe("isTrustedTimeEditor", () => {
-  it("acepta un correo de la lista", () => {
-    expect(isTrustedTimeEditor("djerson347@gmail.com")).toBe(true);
+describe("assertCanEditTimeManually", () => {
+  // Escribir horas a mano se decide por el rol en el espacio. Antes dependía de
+  // una lista de correos con tres direcciones personales por defecto, así que
+  // cualquiera que autoalojara Qubi se las regalaba a tres desconocidos.
+  const call = () => assertCanEditTimeManually("ws-1", "user-1");
+
+  it("deja pasar a OWNER y ADMIN", async () => {
+    for (const role of [WorkspaceRole.OWNER, WorkspaceRole.ADMIN]) {
+      prismaMock.workspaceMember.findUnique.mockResolvedValue({ role });
+      await expect(call()).resolves.toBeUndefined();
+    }
   });
 
-  it("rechaza un correo fuera de la lista", () => {
-    expect(isTrustedTimeEditor("cualquiera@gmail.com")).toBe(false);
+  it("corta a MEMBER y GUEST", async () => {
+    for (const role of [WorkspaceRole.MEMBER, WorkspaceRole.GUEST]) {
+      prismaMock.workspaceMember.findUnique.mockResolvedValue({ role });
+      await expect(call()).rejects.toThrow(/editar horas manualmente/);
+    }
   });
 
-  it("rechaza null/undefined", () => {
-    expect(isTrustedTimeEditor(null)).toBe(false);
-    expect(isTrustedTimeEditor(undefined)).toBe(false);
+  it("corta a quien no es miembro del espacio", async () => {
+    prismaMock.workspaceMember.findUnique.mockResolvedValue(null);
+    await expect(call()).rejects.toThrow(/editar horas manualmente/);
   });
 });
