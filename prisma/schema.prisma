@@ -107,6 +107,7 @@ model User {
   commentReactions  IssueCommentReaction[]
   chatReactions     ChatMessageReaction[]
   googleCalendar    GoogleCalendarLink?
+  googleEvents      GoogleCalendarEvent[]
 }
 
 // Autorización de una persona para que Qubi escriba en SU Google Calendar.
@@ -126,6 +127,27 @@ model GoogleCalendarLink {
   updatedAt             DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Evento creado por Qubi en el Google Calendar de una persona. Va por pareja
+// (tarea, responsable) porque una tarea admite varios responsables y cada uno
+// tiene su propio calendario: son eventos distintos con ids distintos.
+//
+// Guardar el id del evento es lo que permite ACTUALIZAR en vez de duplicar
+// cuando la tarea cambia, y borrarlo cuando deja de tocar.
+model GoogleCalendarEvent {
+  id        String   @id @default(cuid())
+  issueId   String
+  userId    String
+  eventId   String // id del evento en Google
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  issue Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([issueId, userId])
+  @@index([userId])
 }
 
 // ── Auth.js (NextAuth) ───────────────────────────────────────────────────
@@ -325,6 +347,7 @@ model Issue {
   timeEntries   TimeEntry[]
   workSessions  WorkSession[]
   runningTimers RunningTimer[]
+  googleEvents  GoogleCalendarEvent[]
 
   @@unique([workspaceId, number])
   @@index([workspaceId])

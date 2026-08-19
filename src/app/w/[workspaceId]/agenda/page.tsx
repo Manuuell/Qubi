@@ -12,6 +12,7 @@ import {
 } from "@/features/time/week";
 import { AgendaTaskRow } from "@/features/task/components/agenda-task-row";
 import { CalendarSyncDialog } from "@/features/task/components/calendar-sync-dialog";
+import { getConnection } from "@/server/services/google-calendar";
 
 export default async function AgendaPage({
   params,
@@ -24,7 +25,10 @@ export default async function AgendaPage({
   const workspace = await getWorkspace(workspaceId, user.id);
   if (!workspace) notFound();
 
-  const tasks = await listMyTasks(workspaceId, user.id);
+  const [tasks, googleCalendar] = await Promise.all([
+    listMyTasks(workspaceId, user.id),
+    getConnection(user.id),
+  ]);
 
   const today = todayKey();
   const endOfWeek = addDaysToKey(mondayKeyOf(), 6);
@@ -68,7 +72,7 @@ export default async function AgendaPage({
         <span className="text-muted-foreground bg-muted ml-auto rounded-full px-3 py-1 text-sm">
           {tasks.length} pendiente{tasks.length === 1 ? "" : "s"}
         </span>
-        <CalendarSyncDialog />
+        <CalendarSyncDialog googleEmail={googleCalendar?.googleEmail ?? null} />
       </div>
 
       {tasks.length === 0 ? (

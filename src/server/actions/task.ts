@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { getBaseUrl } from "@/lib/mail";
 import {
   IssueStatus,
   IssueType,
@@ -10,12 +12,32 @@ import {
   ProgressTimerPolicy,
 } from "@/generated/prisma/enums";
 import * as taskService from "@/server/services/task";
+import {
+  listTaskEvents,
+  removeDeletedTaskEvents,
+  syncTaskToGoogleCalendars,
+} from "@/server/services/google-calendar-sync";
 import { uploadFile } from "@/lib/storage";
 
 function revalidateProject(workspaceId: string, projectId: string) {
   revalidatePath(`/w/${workspaceId}/projects/${projectId}`);
   // "Mi agenda" muestra tareas de todos los proyectos: mantenerla fresca.
   revalidatePath(`/w/${workspaceId}/agenda`);
+}
+
+// Replica el cambio en el Google Calendar de cada responsable conectado.
+// Va en after() a propósito: se ejecuta tras responder, así que mover una
+// tarea no espera a Google, y si Google falla la tarea ya se guardó igual.
+// La URL base se lee ANTES, porque dentro del callback ya no hay petición.
+async function syncCalendar(taskId: string) {
+  const baseUrl = await getBaseUrl();
+  after(async () => {
+    try {
+      await syncTaskToGoogleCalendars(taskId, baseUrl);
+    } catch (error) {
+      console.error("[google-calendar] no se pudo sincronizar", taskId, error);
+    }
+  });
 }
 
 export async function createTaskAction(input: {
@@ -46,6 +68,7 @@ export async function createTaskAction(input: {
     startDate: input.startDate ? new Date(`${input.startDate}T00:00:00`) : null,
   });
   revalidateProject(input.workspaceId, input.projectId);
+  await syncCalendar(issue.id);
   return issue;
 }
 
@@ -64,6 +87,7 @@ export async function setTaskStatusAction(input: {
     input.note,
   );
   revalidateProject(input.workspaceId, input.projectId);
+  await syncCalendar(input.taskId);
 }
 
 export async function startTaskAction(input: {
@@ -74,6 +98,7 @@ export async function startTaskAction(input: {
   const user = await getCurrentUser();
   await taskService.startTask(input.taskId, user.id);
   revalidateProject(input.workspaceId, input.projectId);
+  await syncCalendar(input.taskId);
 }
 
 // Soltar una tarea sobre la foto de alguien (drag & drop) la asigna sin
@@ -87,6 +112,7 @@ export async function addTaskAssigneeAction(input: {
   const user = await getCurrentUser();
   await taskService.addTaskAssignee(input.taskId, user.id, input.assigneeId);
   revalidateProject(input.workspaceId, input.projectId);
+  await syncCalendar(input.taskId);
 }
 
 export async function setTaskAssigneesAction(input: {
@@ -98,6 +124,7 @@ export async function setTaskAssigneesAction(input: {
   const user = await getCurrentUser();
   await taskService.setTaskAssignees(input.taskId, user.id, input.assigneeIds);
   revalidateProject(input.workspaceId, input.projectId);
+  await syncCalendar(input.taskId);
 }
 
 export async function setTaskLabelsAction(input: {
@@ -144,6 +171,7 @@ export async function setTaskDueDateAction(input: {
   const date = input.dueDate ? new Date(`${input.dueDate}T00:00:00`) : null;
   await taskService.setTaskDueDate(input.taskId, user.id, date);
   revalidateProject(input.workspaceId, input.projectId);
+  await syncCalendar(input.taskId);
 }
 
 export async function setTaskStartDateAction(input: {
@@ -157,6 +185,7 @@ export async function setTaskStartDateAction(input: {
   const date = input.startDate ? new Date(`${input.startDate}T00:00:00`) : null;
   await taskService.setTaskStartDate(input.taskId, user.id, date);
   revalidateProject(input.workspaceId, input.projectId);
+  await syncCalendar(input.taskId);
 }
 
 export async function setTaskTitleAction(input: {
@@ -168,6 +197,7 @@ export async function setTaskTitleAction(input: {
   const user = await getCurrentUser();
   await taskService.setTaskTitle(input.taskId, user.id, input.title);
   revalidateProject(input.workspaceId, input.projectId);
+  await syncCalendar(input.taskId);
 }
 
 export async function setTaskBodyAction(input: {
@@ -308,8 +338,24 @@ export async function deleteTaskAction(input: {
   projectId: string;
 }) {
   const user = await getCurrentUser();
+  // Las filas de eventos se van en cascada con la tarea: hay que quedarse con
+  // ellas ANTES de borrarla o no quedaría forma de limpiarlas en Google.
+  const pendingEvents = await listTaskEvents(input.taskId);
+
   await taskService.deleteTask(input.taskId, user.id);
   revalidateProject(input.workspaceId, input.projectId);
+
+  after(async () => {
+    try {
+      await removeDeletedTaskEvents(pendingEvents);
+    } catch (error) {
+      console.error(
+        "[google-calendar] no se pudo limpiar",
+        input.taskId,
+        error,
+      );
+    }
+  });
 }
 
 // No revalida ruta: el propio componente cliente refresca con router.refresh()

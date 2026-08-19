@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { IssueStatus, ProjectStatus } from "@/generated/prisma/enums";
 import { buildIcsFeed, type IcsEventInput } from "@/lib/ics";
-import { addDaysToKey, dateToLocalKey } from "@/features/time/week";
+import { taskCalendarWindow } from "@/features/task/calendar-window";
 
 // Sincronización de calendario: un feed ICS por usuario, protegido por un
 // token aleatorio guardado en User.calendarToken. Google Calendar (y otros)
@@ -84,22 +84,19 @@ async function listCalendarTasks(userId: string): Promise<CalendarTask[]> {
   );
 }
 
-// Una tarea con fecha límite ocupa su día; con inicio y fin, el rango
-// [inicio, fin] (eventos "todo el día", igual que el calendario de la app).
-function eventFor(task: CalendarTask, baseUrl: string): IcsEventInput {
-  const startKey = dateToLocalKey(new Date(task.startDate ?? task.dueDate!));
-  let endKey = addDaysToKey(
-    dateToLocalKey(new Date(task.dueDate ?? task.startDate!)),
-    1,
-  );
-  // Datos raros (inicio después del fin): al menos un día de evento.
-  if (endKey <= startKey) endKey = addDaysToKey(startKey, 1);
+// Los días los decide taskCalendarWindow, compartido con la sincronización
+// de Google para que ambas integraciones coloquen la tarea en las mismas
+// fechas. null = la tarea no tiene ninguna fecha y no entra en el feed.
+function eventFor(task: CalendarTask, baseUrl: string): IcsEventInput | null {
+  const window = taskCalendarWindow(task);
+  if (!window) return null;
+
   return {
     uid: `${task.id}@qubi`,
     summary: task.title,
     description: `Proyecto: ${task.project.name}\n${baseUrl}/w/${task.workspaceId}/tasks/${task.number}`,
-    startKey,
-    endKey,
+    startKey: window.startKey,
+    endKey: window.endKey,
     updatedAt: task.updatedAt,
   };
 }
@@ -110,6 +107,8 @@ export async function buildCalendarFeed(
   userName: string | null,
 ): Promise<string> {
   const tasks = await listCalendarTasks(userId);
-  const events = tasks.map((t) => eventFor(t, baseUrl));
+  const events = tasks
+    .map((t) => eventFor(t, baseUrl))
+    .filter((e): e is IcsEventInput => e !== null);
   return buildIcsFeed(events, `Qubi — tareas de ${userName ?? "mi equipo"}`);
 }

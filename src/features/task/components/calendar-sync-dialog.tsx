@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CalendarDays, Check, Copy, RefreshCw } from "lucide-react";
+import {
+  CalendarDays,
+  Check,
+  Copy,
+  ExternalLink,
+  RefreshCw,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,20 +23,29 @@ import {
   regenerateCalendarTokenAction,
 } from "@/server/actions/account";
 
-// Sincronización con Google Calendar (y cualquier calendario que acepte
-// suscripción por URL): muestra el feed ICS personal del usuario con su
-// token secreto. Al abrir, pide (o crea) la URL; "Regenerar" la revoca.
-export function CalendarSyncDialog({ compact = false }: { compact?: boolean }) {
+// Una sola puerta para llevarse las tareas al calendario, con las dos vías que
+// existen: Google, que las escribe en el calendario propio de cada quien al
+// instante, y la suscripción por URL para Apple Calendar, Outlook y demás,
+// que Google monta como calendario aparte y refresca cuando le parece.
+export function CalendarSyncDialog({
+  compact = false,
+  googleEmail = null,
+}: {
+  compact?: boolean;
+  googleEmail?: string | null;
+}) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showFeed, setShowFeed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  // Sin esto, un fallo del servidor dejaba el diálogo en "Preparando tu
-  // enlace…" para siempre, sin manera de reintentar.
+  // La URL solo se pide (y el token solo se crea) si de verdad la piden: a
+  // quien use Google no le hace falta.
   function loadUrl(fetchUrl: () => Promise<{ url: string }>) {
     setError(null);
+    setShowFeed(true);
     startTransition(async () => {
       try {
         const { url: next } = await fetchUrl();
@@ -49,13 +64,7 @@ export function CalendarSyncDialog({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (next && url === null) loadUrl(getCalendarFeedUrlAction);
-      }}
-    >
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
           <Button variant="outline" size={compact ? "icon" : "default"}>
@@ -66,72 +75,108 @@ export function CalendarSyncDialog({ compact = false }: { compact?: boolean }) {
       />
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Google Calendar</DialogTitle>
+          <DialogTitle>Sincronizar calendario</DialogTitle>
           <DialogDescription>
-            Tus tareas con fecha aparecerán en Google Calendar y se actualizarán
-            solas. Cópialas como calendario por URL.
+            Tus tareas con fecha, en el calendario que ya usas.
           </DialogDescription>
         </DialogHeader>
 
-        {error !== null ? (
-          <div className="space-y-3 py-2">
-            <p className="text-destructive text-sm">{error}</p>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={pending}
-              onClick={() => loadUrl(getCalendarFeedUrlAction)}
-            >
-              Reintentar
-            </Button>
-          </div>
-        ) : url === null ? (
-          <p className="text-muted-foreground py-2 text-sm">
-            Preparando tu enlace…
-          </p>
-        ) : (
-          <>
-            <div className="flex gap-2">
-              <Input readOnly value={url} className="font-mono text-xs" />
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium">Google Calendar</h3>
+          {googleEmail ? (
+            <p className="text-muted-foreground text-sm">
+              Conectado como{" "}
+              <span className="text-foreground font-medium">{googleEmail}</span>
+              . Tus tareas se crean en tu calendario y se actualizan cuando
+              cambian.
+            </p>
+          ) : (
+            <>
+              <p className="text-muted-foreground text-sm">
+                Las tareas se crean en tu propio calendario, al momento.
+              </p>
+              <Button
+                size="sm"
+                render={<a href="/api/google-calendar/connect" />}
+              >
+                Conectar Google Calendar
+              </Button>
+            </>
+          )}
+        </div>
+
+        <div className="border-border space-y-2 border-t pt-4">
+          <h3 className="text-sm font-medium">
+            Apple Calendar, Outlook u otros
+          </h3>
+
+          {!showFeed ? (
+            <>
+              <p className="text-muted-foreground text-sm">
+                Se suscriben por URL. Aparecen como un calendario aparte y
+                tardan entre varias horas y un día en reflejar los cambios.
+              </p>
               <Button
                 variant="outline"
-                size="icon"
-                onClick={copy}
-                aria-label="Copiar enlace"
+                size="sm"
+                onClick={() => loadUrl(getCalendarFeedUrlAction)}
               >
-                {copied ? <Check /> : <Copy />}
+                Ver el enlace de suscripción
+              </Button>
+            </>
+          ) : error !== null ? (
+            <div className="space-y-2">
+              <p className="text-destructive text-sm">{error}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pending}
+                onClick={() => loadUrl(getCalendarFeedUrlAction)}
+              >
+                Reintentar
               </Button>
             </div>
-
-            <ol className="text-muted-foreground list-decimal space-y-1 pl-5 text-sm">
-              <li>
-                En Google Calendar, junto a “Otros calendarios”, pulsa{" "}
-                <span className="text-foreground font-medium">+</span>.
-              </li>
-              <li>
-                Elige{" "}
-                <span className="text-foreground font-medium">Desde URL</span> y
-                pega este enlace.
-              </li>
-              <li>Pulsa “Añadir calendario”.</li>
-            </ol>
-            <p className="text-muted-foreground text-xs">
-              Google decide cuándo releer el calendario y suele tardar entre
-              varias horas y un día en reflejar los cambios; no es inmediato. El
-              enlace es personal y secreto: no lo compartas.
+          ) : url === null ? (
+            <p className="text-muted-foreground text-sm">
+              Preparando tu enlace…
             </p>
+          ) : (
+            <>
+              <div className="flex gap-2">
+                <Input readOnly value={url} className="font-mono text-xs" />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={copy}
+                  aria-label="Copiar enlace"
+                >
+                  {copied ? <Check /> : <Copy />}
+                </Button>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Añádelo en tu calendario como suscripción por URL. Es personal y
+                secreto: no lo compartas.
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={pending}
+                onClick={() => loadUrl(regenerateCalendarTokenAction)}
+              >
+                <RefreshCw className="size-3.5" />
+                Regenerar enlace (revoca el anterior)
+              </Button>
+            </>
+          )}
+        </div>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={pending}
-              onClick={() => loadUrl(regenerateCalendarTokenAction)}
-            >
-              <RefreshCw className="size-3.5" />
-              Regenerar enlace (revoca el anterior)
-            </Button>
-          </>
-        )}
+        <a
+          href="/account#calendar"
+          className="text-muted-foreground hover:text-foreground transition-ios inline-flex items-center gap-1 text-xs"
+        >
+          Gestionar la conexión en tu cuenta
+          <ExternalLink className="size-3" />
+        </a>
       </DialogContent>
     </Dialog>
   );

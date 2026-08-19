@@ -25,6 +25,7 @@ import { TaskBoard } from "@/features/task/components/task-board";
 import { TaskList } from "@/features/task/components/task-list";
 import { TaskCalendar } from "@/features/task/components/task-calendar";
 import { CalendarSyncDialog } from "@/features/task/components/calendar-sync-dialog";
+import { getConnection } from "@/server/services/google-calendar";
 import { TaskGanttView } from "@/features/task/components/task-gantt-view";
 
 const VIEWS = [
@@ -51,9 +52,10 @@ export default async function ProjectPage({
   const { view: rawView } = await searchParams;
   const user = await getCurrentUser();
 
-  const [project, role] = await Promise.all([
+  const [project, role, googleCalendar] = await Promise.all([
     getProject(projectId, user.id),
     getWorkspaceRole(workspaceId, user.id),
+    getConnection(user.id),
   ]);
   if (!project || project.workspaceId !== workspaceId) notFound();
   const isAdmin = role === WorkspaceRole.OWNER || role === WorkspaceRole.ADMIN;
@@ -164,7 +166,10 @@ export default async function ProjectPage({
         {view === "calendar" && (
           <div>
             <div className="mb-3 flex items-center justify-end">
-              <CalendarSyncDialog compact />
+              <CalendarSyncDialog
+                compact
+                googleEmail={googleCalendar?.googleEmail ?? null}
+              />
             </div>
             <TaskCalendar tasks={tasks} workspaceId={workspaceId} />
           </div>
