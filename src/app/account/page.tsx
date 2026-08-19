@@ -7,6 +7,11 @@ import { AvatarUpload } from "@/features/auth/components/avatar-upload";
 import { ProfileNameForm } from "@/features/auth/components/profile-name-form";
 import { SessionsSection } from "@/features/auth/components/sessions-section";
 import { ThemeSection } from "@/components/theme-section";
+import { GoogleCalendarSection } from "@/features/auth/components/google-calendar-section";
+import {
+  getConnection,
+  googleCalendarConfigured,
+} from "@/server/services/google-calendar";
 import {
   Card,
   CardHeader,
@@ -16,8 +21,30 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function AccountPage() {
+// El aviso de la vuelta desde Google: la ruta de callback redirige aquí con
+// ?calendar=..., porque un route handler no puede pintar interfaz.
+const CALENDAR_NOTICES: Record<string, { text: string; ok: boolean }> = {
+  ok: { text: "Google Calendar conectado.", ok: true },
+  cancelado: { text: "No autorizaste el acceso al calendario.", ok: false },
+  error: {
+    text: "No se pudo conectar con Google Calendar. Inténtalo de nuevo.",
+    ok: false,
+  },
+  no_configurado: {
+    text: "Este servidor no tiene configurado el acceso a Google.",
+    ok: false,
+  },
+};
+
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ calendar?: string }>;
+}) {
   const user = await getCurrentUser();
+  const { calendar } = await searchParams;
+  const notice = calendar ? CALENDAR_NOTICES[calendar] : undefined;
+  const calendarConnection = await getConnection(user.id);
 
   const ring = await readRing();
   const accounts = ring
@@ -81,6 +108,27 @@ export default async function AccountPage() {
             </CardDescription>
           </CardHeader>
           <ChangePasswordForm hasPassword={Boolean(user.hashedPassword)} />
+        </Card>
+
+        <Card variant="glass" id="calendar">
+          <CardHeader>
+            <CardTitle>Google Calendar</CardTitle>
+            <CardDescription>
+              Tus tareas con fecha se crean en tu propio calendario de Google y
+              se actualizan cuando cambian.
+            </CardDescription>
+          </CardHeader>
+          {notice && (
+            <p
+              className={`px-6 pb-3 text-sm ${notice.ok ? "text-primary" : "text-destructive"}`}
+            >
+              {notice.text}
+            </p>
+          )}
+          <GoogleCalendarSection
+            connection={calendarConnection}
+            configured={googleCalendarConfigured()}
+          />
         </Card>
 
         <Card variant="glass">
