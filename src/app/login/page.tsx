@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { LoginForm } from "@/features/auth/components/login-form";
-import { GuestAccountsCard } from "@/features/auth/components/guest-accounts-card";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +13,21 @@ const NOTICES: Record<string, string> = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ add?: string; verify?: string; reset?: string }>;
+  searchParams: Promise<{
+    add?: string;
+    verify?: string;
+    reset?: string;
+    email?: string;
+  }>;
 }) {
-  const { add, verify, reset } = await searchParams;
+  const { add, verify, reset, email } = await searchParams;
   const addMode = add === "1";
+
+  // La entrada por correo y el registro están ocultos: se entra con Google.
+  // Nada se ha borrado (las acciones y las rutas de recuperación siguen ahí),
+  // y /login?email=1 los vuelve a mostrar — es la salida de emergencia para
+  // quien tenga cuenta con contraseña y aún no la haya enlazado con Google.
+  const showEmailLogin = email === "1";
 
   // En modo "agregar cuenta" se permite el login aunque ya haya una sesión.
   const session = await auth();
@@ -39,8 +49,11 @@ export default async function LoginPage({
         googleEnabled={googleEnabled}
         addMode={addMode}
         notice={notice}
+        showEmailLogin={showEmailLogin}
       />
-      {!addMode && <GuestAccountsCard />}
+      {/* La tarjeta de cuentas de invitado se deja de mostrar, pero el
+          componente (guest-accounts-card.tsx), sus credenciales y el seed que
+          las crea siguen intactos: basta con volver a montarla aquí. */}
     </div>
   );
 }

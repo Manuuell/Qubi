@@ -40,10 +40,15 @@ export function LoginForm({
   googleEnabled,
   addMode = false,
   notice,
+  showEmailLogin = false,
 }: {
   googleEnabled: boolean;
   addMode?: boolean;
   notice?: string;
+  // Entrar con correo y registrarse están ocultos: se entra con Google. No se
+  // ha borrado nada —las acciones, el registro y la recuperación de contraseña
+  // siguen ahí—, solo deja de pintarse.
+  showEmailLogin?: boolean;
 }) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [loginState, loginSubmit, loginPending] = useActionState(loginAction, {
@@ -55,6 +60,10 @@ export function LoginForm({
 
   const [resendInfo, setResendInfo] = useState<string | null>(null);
   const [resending, startResend] = useTransition();
+
+  // Sin Google configurado se muestra igual: dejar la puerta cerrada sin
+  // llave sería peor que enseñar un formulario de más.
+  const emailVisible = showEmailLogin || !googleEnabled;
 
   const isLogin = mode === "login";
   const state = isLogin ? loginState : regState;
@@ -115,85 +124,97 @@ export function LoginForm({
                   Continuar con Google
                 </Button>
               </form>
-              <div className="relative text-center">
-                <span className="bg-background text-muted-foreground px-2 text-xs">
-                  o con tu email
-                </span>
-              </div>
+              {emailVisible && (
+                <div className="relative text-center">
+                  <span className="bg-background text-muted-foreground px-2 text-xs">
+                    o con tu email
+                  </span>
+                </div>
+              )}
             </>
           )}
 
-          <form action={action} className="space-y-3">
-            {!isLogin && (
-              <Input
-                name="name"
-                type="text"
-                placeholder="Tu nombre"
-                autoComplete="name"
-              />
-            )}
-            <Input
-              name="email"
-              type="email"
-              placeholder="correo@ejemplo.com"
-              autoComplete="email"
-              required
-            />
-            <PasswordInput
-              name="password"
-              placeholder="Contraseña"
-              autoComplete={isLogin ? "current-password" : "new-password"}
-              required
-            />
-
-            {state?.error && (
-              <p className="text-destructive text-sm">{state.error}</p>
-            )}
-
-            {/* Credenciales correctas pero correo sin verificar. */}
-            {isLogin && loginState?.needsVerification && (
-              <div className="bg-muted/50 space-y-2 rounded-2xl border px-3 py-2 text-sm">
-                <p>Confirma tu correo para poder entrar.</p>
-                {resendInfo ? (
-                  <p className="text-muted-foreground text-xs">{resendInfo}</p>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => resend(loginState.email ?? "")}
-                    disabled={resending}
-                    className="text-foreground font-medium underline disabled:opacity-50"
-                  >
-                    {resending
-                      ? "Enviando…"
-                      : "Reenviar correo de confirmación"}
-                  </button>
+          {emailVisible && (
+            <>
+              <form action={action} className="space-y-3">
+                {!isLogin && (
+                  <Input
+                    name="name"
+                    type="text"
+                    placeholder="Tu nombre"
+                    autoComplete="name"
+                  />
                 )}
-              </div>
-            )}
+                <Input
+                  name="email"
+                  type="email"
+                  placeholder="correo@ejemplo.com"
+                  autoComplete="email"
+                  required
+                />
+                <PasswordInput
+                  name="password"
+                  placeholder="Contraseña"
+                  autoComplete={isLogin ? "current-password" : "new-password"}
+                  required
+                />
 
-            <Button type="submit" disabled={pending} className="w-full">
-              {pending ? "Un momento…" : isLogin ? "Entrar" : "Crear cuenta"}
-            </Button>
-          </form>
+                {state?.error && (
+                  <p className="text-destructive text-sm">{state.error}</p>
+                )}
 
-          {isLogin && (
-            <Link
-              href="/forgot-password"
-              className="text-muted-foreground hover:text-foreground block text-center text-sm"
-            >
-              ¿Olvidaste tu contraseña?
-            </Link>
+                {/* Credenciales correctas pero correo sin verificar. */}
+                {isLogin && loginState?.needsVerification && (
+                  <div className="bg-muted/50 space-y-2 rounded-2xl border px-3 py-2 text-sm">
+                    <p>Confirma tu correo para poder entrar.</p>
+                    {resendInfo ? (
+                      <p className="text-muted-foreground text-xs">
+                        {resendInfo}
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => resend(loginState.email ?? "")}
+                        disabled={resending}
+                        className="text-foreground font-medium underline disabled:opacity-50"
+                      >
+                        {resending
+                          ? "Enviando…"
+                          : "Reenviar correo de confirmación"}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <Button type="submit" disabled={pending} className="w-full">
+                  {pending
+                    ? "Un momento…"
+                    : isLogin
+                      ? "Entrar"
+                      : "Crear cuenta"}
+                </Button>
+              </form>
+
+              {isLogin && (
+                <Link
+                  href="/forgot-password"
+                  className="text-muted-foreground hover:text-foreground block text-center text-sm"
+                >
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setMode(isLogin ? "register" : "login")}
+                className="text-muted-foreground hover:text-foreground w-full text-center text-sm"
+              >
+                {isLogin
+                  ? "¿No tienes cuenta? Regístrate"
+                  : "¿Ya tienes cuenta? Inicia sesión"}
+              </button>
+            </>
           )}
-
-          <button
-            type="button"
-            onClick={() => setMode(isLogin ? "register" : "login")}
-            className="text-muted-foreground hover:text-foreground w-full text-center text-sm"
-          >
-            {isLogin
-              ? "¿No tienes cuenta? Regístrate"
-              : "¿Ya tienes cuenta? Inicia sesión"}
-          </button>
         </>
       )}
     </div>
