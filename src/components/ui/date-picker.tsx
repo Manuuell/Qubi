@@ -38,6 +38,7 @@ export function DatePicker({
   ariaLabel,
   placeholder = "Sin fecha",
   className,
+  fullWidth = false,
 }: {
   value: string; // "" o "YYYY-MM-DD"
   onChange: (value: string) => void;
@@ -45,6 +46,10 @@ export function DatePicker({
   ariaLabel?: string;
   placeholder?: string;
   className?: string;
+  // Por defecto es una píldora compacta, que es como se usa junto al título de
+  // una tarea. En un formulario, donde el resto de campos son cajas a todo el
+  // ancho, queda descolgada: fullWidth lo hace ocupar la columna entera.
+  fullWidth?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const today = new Date();
@@ -95,7 +100,10 @@ export function DatePicker({
     : placeholder;
 
   return (
-    <div className="relative inline-block" ref={containerRef}>
+    <div
+      className={cn("relative", fullWidth ? "block w-full" : "inline-block")}
+      ref={containerRef}
+    >
       <button
         type="button"
         onClick={toggle}
@@ -103,6 +111,7 @@ export function DatePicker({
         aria-label={ariaLabel}
         className={cn(
           "border-input bg-background hover:bg-accent transition-ios flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs outline-none disabled:opacity-50",
+          fullWidth && "w-full rounded-xl px-3 py-1.5 text-sm",
           !parsed && "text-muted-foreground",
           className,
         )}

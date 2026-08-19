@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils";
 
 export type LabelOption = { id: string; name: string; color: string };
@@ -308,22 +309,22 @@ export function NewTaskDialog({
               <p className="text-muted-foreground mb-1.5 text-xs font-medium">
                 Fecha de inicio
               </p>
-              <input
-                type="date"
+              <DatePicker
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="bg-background w-full rounded-xl border px-3 py-1.5 text-sm outline-none"
+                onChange={setStartDate}
+                ariaLabel="Fecha de inicio"
+                fullWidth
               />
             </div>
             <div>
               <p className="text-muted-foreground mb-1.5 text-xs font-medium">
                 Fecha límite
               </p>
-              <input
-                type="date"
+              <DatePicker
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="bg-background w-full rounded-xl border px-3 py-1.5 text-sm outline-none"
+                onChange={setDueDate}
+                ariaLabel="Fecha límite"
+                fullWidth
               />
             </div>
           </div>
