@@ -11,6 +11,7 @@ import {
   todayKey,
 } from "@/features/time/week";
 import { AgendaTaskRow } from "@/features/task/components/agenda-task-row";
+import { CalendarSyncDialog } from "@/features/task/components/calendar-sync-dialog";
 
 export default async function AgendaPage({
   params,
@@ -67,6 +68,7 @@ export default async function AgendaPage({
         <span className="text-muted-foreground bg-muted ml-auto rounded-full px-3 py-1 text-sm">
           {tasks.length} pendiente{tasks.length === 1 ? "" : "s"}
         </span>
+        <CalendarSyncDialog />
       </div>
 
       {tasks.length === 0 ? (

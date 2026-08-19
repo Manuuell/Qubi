@@ -1,0 +1,115 @@
+import { randomBytes } from "node:crypto";
+import { prisma } from "@/lib/db";
+import { IssueStatus, ProjectStatus } from "@/generated/prisma/enums";
+import { buildIcsFeed, type IcsEventInput } from "@/lib/ics";
+import { addDaysToKey, dateToLocalKey } from "@/features/time/week";
+
+// Sincronización de calendario: un feed ICS por usuario, protegido por un
+// token aleatorio guardado en User.calendarToken. Google Calendar (y otros)
+// se suscriben a la URL y la refrescan solos; sin OAuth ni credenciales.
+// El token se puede regenerar para revocar el acceso si la URL se filtra.
+
+const CALENDAR_FEED_PATH = "/api/calendar";
+
+export function calendarFeedUrl(baseUrl: string, token: string): string {
+  return `${baseUrl}${CALENDAR_FEED_PATH}/${token}`;
+}
+
+// Devuelve el token actual del usuario o crea uno nuevo.
+export async function getOrCreateCalendarToken(
+  userId: string,
+): Promise<string> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { calendarToken: true },
+  });
+  if (user?.calendarToken) return user.calendarToken;
+
+  const token = randomBytes(32).toString("base64url");
+  await prisma.user.update({
+    where: { id: userId },
+    data: { calendarToken: token },
+  });
+  return token;
+}
+
+// Genera un token nuevo: las URL antiguas dejan de funcionar.
+export async function regenerateCalendarToken(userId: string): Promise<string> {
+  const token = randomBytes(32).toString("base64url");
+  await prisma.user.update({
+    where: { id: userId },
+    data: { calendarToken: token },
+  });
+  return token;
+}
+
+type CalendarTask = {
+  id: string;
+  number: number;
+  title: string;
+  workspaceId: string;
+  startDate: Date | null;
+  dueDate: Date | null;
+  updatedAt: Date;
+  project: { name: string };
+};
+
+// Tareas del usuario con fecha, pendientes, en todos sus espacios. Son las
+// que alimentan el feed (mismo criterio que "Mi agenda", que además exige
+// fecha para poder colocar el evento en el calendario).
+async function listCalendarTasks(userId: string): Promise<CalendarTask[]> {
+  const rows = await prisma.issue.findMany({
+    where: {
+      workspace: { members: { some: { userId } } },
+      assignees: { some: { userId } },
+      status: { not: IssueStatus.DONE },
+      project: { status: ProjectStatus.ACTIVE },
+      OR: [{ dueDate: { not: null } }, { startDate: { not: null } }],
+    },
+    select: {
+      id: true,
+      number: true,
+      title: true,
+      workspaceId: true,
+      startDate: true,
+      dueDate: true,
+      updatedAt: true,
+      project: { select: { name: true } },
+    },
+    orderBy: { dueDate: "asc" },
+  });
+  return rows.filter(
+    (r): r is CalendarTask & { project: { name: string } } =>
+      r.project !== null,
+  );
+}
+
+// Una tarea con fecha límite ocupa su día; con inicio y fin, el rango
+// [inicio, fin] (eventos "todo el día", igual que el calendario de la app).
+function eventFor(task: CalendarTask, baseUrl: string): IcsEventInput {
+  const startKey = dateToLocalKey(new Date(task.startDate ?? task.dueDate!));
+  let endKey = addDaysToKey(
+    dateToLocalKey(new Date(task.dueDate ?? task.startDate!)),
+    1,
+  );
+  // Datos raros (inicio después del fin): al menos un día de evento.
+  if (endKey <= startKey) endKey = addDaysToKey(startKey, 1);
+  return {
+    uid: `${task.id}@qubi`,
+    summary: task.title,
+    description: `Proyecto: ${task.project.name}\n${baseUrl}/w/${task.workspaceId}/tasks/${task.number}`,
+    startKey,
+    endKey,
+    updatedAt: task.updatedAt,
+  };
+}
+
+export async function buildCalendarFeed(
+  userId: string,
+  baseUrl: string,
+  userName: string | null,
+): Promise<string> {
+  const tasks = await listCalendarTasks(userId);
+  const events = tasks.map((t) => eventFor(t, baseUrl));
+  return buildIcsFeed(events, `Qubi — tareas de ${userName ?? "mi equipo"}`);
+}

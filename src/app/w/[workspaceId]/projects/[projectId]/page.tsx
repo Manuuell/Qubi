@@ -24,6 +24,7 @@ import { NewTaskDialog } from "@/features/task/components/new-task-dialog";
 import { TaskBoard } from "@/features/task/components/task-board";
 import { TaskList } from "@/features/task/components/task-list";
 import { TaskCalendar } from "@/features/task/components/task-calendar";
+import { CalendarSyncDialog } from "@/features/task/components/calendar-sync-dialog";
 import { TaskGanttView } from "@/features/task/components/task-gantt-view";
 
 const VIEWS = [
@@ -161,7 +162,12 @@ export default async function ProjectPage({
           />
         )}
         {view === "calendar" && (
-          <TaskCalendar tasks={tasks} workspaceId={workspaceId} />
+          <div>
+            <div className="mb-3 flex items-center justify-end">
+              <CalendarSyncDialog compact />
+            </div>
+            <TaskCalendar tasks={tasks} workspaceId={workspaceId} />
+          </div>
         )}
         {view === "gantt" && (
           <TaskGanttView
