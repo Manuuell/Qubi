@@ -15,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Qubi",
-  description: "Tu espacio de trabajo tipo Notion, gratis y autoalojado.",
+  description:
+    "Organiza las tareas de tu equipo, cronometra el trabajo y lleva el registro de horas por proyecto. Gratis y autoalojada.",
 };
 
 export default function RootLayout({
