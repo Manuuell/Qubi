@@ -128,6 +128,9 @@ export function LoginForm({
           {googleEnabled && (
             <>
               <form action={googleSignInAction}>
+                {/* Avisa a la acción de que esto es "agregar otra cuenta":
+                    tiene que cerrar la sesión actual antes de ir a Google. */}
+                {addMode && <input type="hidden" name="add" value="1" />}
                 <Button type="submit" variant="outline" className="w-full">
                   <GoogleIcon />
                   Continuar con Google

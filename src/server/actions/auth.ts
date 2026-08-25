@@ -223,7 +223,20 @@ export async function changePasswordAction(
   return { info: "Contraseña actualizada correctamente." };
 }
 
-export async function googleSignInAction() {
+export async function googleSignInAction(formData?: FormData) {
+  // Al "agregar otra cuenta" hay que soltar la sesión actual ANTES de ir a
+  // Google. Si sigue viva, Auth.js no cambia de cuenta: VINCULA la cuenta de
+  // Google elegida al usuario que ya estaba dentro y devuelve esa misma sesión
+  // (ver el branch "already signed in" de @auth/core handle-login). El
+  // resultado parecía un login correcto pero seguías siendo el usuario
+  // anterior, y de paso el Google del otro quedaba colgando de tu cuenta.
+  //
+  // Salir aquí es seguro: prepareAddAccountAction ya dejó la cuenta actual en
+  // el anillo, así que se puede volver a ella sin escribir la contraseña. Se
+  // usa signOut directo y no logoutAction porque ese la borra del anillo.
+  if (formData?.get("add") === "1") {
+    await signOut({ redirect: false });
+  }
   await signIn("google", { redirectTo: "/" });
 }
 
