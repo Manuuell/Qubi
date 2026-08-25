@@ -54,6 +54,7 @@ enum NotificationType {
   TASK_REVIEW_FEEDBACK // el manager comentó/dio feedback sobre tus avances
   TASK_REOPENED // el manager devolvió tu tarea a pendiente o en curso
   MENTIONED // te mencionaron con @ en un comentario o mensaje de chat
+  MEETING_INVITED // te invitaron a una reunión
 }
 
 // Tipo de tarea (para clasificar y filtrar el trabajo).
@@ -108,6 +109,9 @@ model User {
   chatReactions     ChatMessageReaction[]
   googleCalendar    GoogleCalendarLink?
   googleEvents      GoogleCalendarEvent[]
+  organizedMeetings  Meeting[]              @relation("MeetingOrganizer")
+  meetingAttendances MeetingAttendee[]
+  meetingEvents      MeetingCalendarEvent[]
 }
 
 // Autorización de una persona para que Qubi escriba en SU Google Calendar.
@@ -147,6 +151,70 @@ model GoogleCalendarEvent {
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([issueId, userId])
+  @@index([userId])
+}
+
+// ── Reuniones ────────────────────────────────────────────────────────────
+// A diferencia de las tareas (día completo), una reunión tiene hora exacta de
+// inicio y fin. V1: solo crear y cancelar, no editar/reprogramar (se cancela
+// y se crea una nueva si hace falta cambiar algo).
+//
+// Cancelar deja cancelledAt en vez de borrar la fila: así el ciclo de vida se
+// resuelve con el mismo mecanismo de reconciliación que ya sincroniza la
+// reunión al crearla (ver google-calendar-meeting-sync.ts) — una reunión
+// cancelada simplemente deja de "deber aparecer", igual que una tarea
+// marcada Hecha desaparece del calendario sin dejar de existir en la base.
+model Meeting {
+  id          String    @id @default(cuid())
+  workspaceId String
+  organizerId String? // quién la agendó
+  title       String
+  description String    @default("")
+  location    String    @default("")
+  startAt     DateTime
+  endAt       DateTime
+  cancelledAt DateTime? // null = vigente
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace    Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  organizer    User?                  @relation("MeetingOrganizer", fields: [organizerId], references: [id], onDelete: SetNull)
+  attendees    MeetingAttendee[]
+  googleEvents MeetingCalendarEvent[]
+
+  @@index([workspaceId, startAt])
+  @@index([organizerId])
+}
+
+// Tabla puente reunión <-> asistente. Sin límite (a diferencia de
+// IssueAssignee, que tope en 3 vía MAX_ASSIGNEES en la app).
+model MeetingAttendee {
+  id        String   @id @default(cuid())
+  meetingId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+  @@index([userId])
+}
+
+// Evento creado por Qubi en el Google Calendar de un asistente. Análogo a
+// GoogleCalendarEvent pero con hora (dateTime), no de día completo.
+model MeetingCalendarEvent {
+  id        String   @id @default(cuid())
+  meetingId String
+  userId    String
+  eventId   String // id del evento en Google
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
   @@index([userId])
 }
 
@@ -211,6 +279,7 @@ model Workspace {
   notifications Notification[]
   workSessions  WorkSession[]
   conversations Conversation[]
+  meetings      Meeting[]
 
   @@index([ownerId])
 }

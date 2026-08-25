@@ -12,6 +12,8 @@ import { seal, unseal } from "@/lib/secret-box";
 const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const REVOKE_ENDPOINT = "https://oauth2.googleapis.com/revoke";
+export const EVENTS_ENDPOINT =
+  "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 
 // calendar.events permite crear/editar/borrar eventos, pero no leer ni tocar
 // la configuración del calendario: es el permiso más pequeño que sirve.
@@ -142,6 +144,25 @@ export async function getConnection(
     : null;
 }
 
+// Igual que getConnection pero para varias personas a la vez (p. ej. el
+// selector de invitados de una reunión, para marcar quién ya conectó su
+// calendario sin hacer una consulta por persona).
+export async function getConnections(
+  userIds: string[],
+): Promise<Map<string, CalendarConnection>> {
+  if (userIds.length === 0) return new Map();
+  const links = await prisma.googleCalendarLink.findMany({
+    where: { userId: { in: userIds } },
+    select: { userId: true, googleEmail: true, createdAt: true },
+  });
+  return new Map(
+    links.map((l) => [
+      l.userId,
+      { googleEmail: l.googleEmail, connectedAt: l.createdAt },
+    ]),
+  );
+}
+
 // Access token fresco a partir del refresh guardado. null = hay que volver a
 // conectar (la persona revocó el permiso, o el dato ya no se puede descifrar).
 export async function getAccessToken(userId: string): Promise<string | null> {
@@ -195,4 +216,34 @@ export async function disconnect(userId: string): Promise<void> {
   }
 
   await prisma.googleCalendarLink.deleteMany({ where: { userId } });
+}
+
+// Wrapper delgado sobre fetch para hablar con la API de eventos de Google
+// Calendar. Lo comparten la sincronización de tareas y la de reuniones.
+export async function callGoogle(
+  accessToken: string,
+  url: string,
+  method: "POST" | "PATCH" | "DELETE",
+  body?: unknown,
+): Promise<{ ok: boolean; status: number; id?: string }> {
+  const response = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+
+  if (method === "DELETE") {
+    // 410 = ya estaba borrado en Google; para nosotros es el mismo final.
+    return {
+      ok: response.ok || response.status === 410,
+      status: response.status,
+    };
+  }
+  if (!response.ok) return { ok: false, status: response.status };
+
+  const json = (await response.json()) as { id?: string };
+  return { ok: true, status: response.status, id: json.id };
 }

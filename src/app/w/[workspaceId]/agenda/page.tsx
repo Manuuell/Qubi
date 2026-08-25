@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth";
 import { getWorkspace } from "@/server/services/workspace";
 import { listMyTasks, type AgendaTask } from "@/server/services/task";
+import { listMyMeetings } from "@/server/services/meeting";
+import { getWorkspaceMembers } from "@/server/services/member";
 import {
   addDaysToKey,
   dateToLocalKey,
@@ -12,7 +14,12 @@ import {
 } from "@/features/time/week";
 import { AgendaTaskRow } from "@/features/task/components/agenda-task-row";
 import { CalendarSyncDialog } from "@/features/task/components/calendar-sync-dialog";
-import { getConnection } from "@/server/services/google-calendar";
+import { NewMeetingDialog } from "@/features/meeting/components/new-meeting-dialog";
+import { MeetingRow } from "@/features/meeting/components/meeting-row";
+import {
+  getConnection,
+  getConnections,
+} from "@/server/services/google-calendar";
 
 export default async function AgendaPage({
   params,
@@ -25,10 +32,19 @@ export default async function AgendaPage({
   const workspace = await getWorkspace(workspaceId, user.id);
   if (!workspace) notFound();
 
-  const [tasks, googleCalendar] = await Promise.all([
+  const [tasks, meetings, members, googleCalendar] = await Promise.all([
     listMyTasks(workspaceId, user.id),
+    listMyMeetings(workspaceId, user.id),
+    getWorkspaceMembers(workspaceId),
     getConnection(user.id),
   ]);
+  const memberOptions = members.map((m) => ({
+    id: m.user.id,
+    name: m.user.name,
+    email: m.user.email,
+    image: m.user.image,
+  }));
+  const connections = await getConnections(memberOptions.map((m) => m.id));
 
   const today = todayKey();
   const endOfWeek = addDaysToKey(mondayKeyOf(), 6);
@@ -72,8 +88,31 @@ export default async function AgendaPage({
         <span className="text-muted-foreground bg-muted ml-auto rounded-full px-3 py-1 text-sm">
           {tasks.length} pendiente{tasks.length === 1 ? "" : "s"}
         </span>
+        <NewMeetingDialog
+          workspaceId={workspaceId}
+          members={memberOptions}
+          connectedUserIds={[...connections.keys()]}
+        />
         <CalendarSyncDialog googleEmail={googleCalendar?.googleEmail ?? null} />
       </div>
+
+      {meetings.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-2 flex items-center gap-2 px-1 text-sm font-medium">
+            <span>Reuniones</span>
+            <span className="text-muted-foreground">{meetings.length}</span>
+          </h2>
+          <div className="glass divide-border/60 divide-y overflow-hidden rounded-3xl">
+            {meetings.map((meeting) => (
+              <MeetingRow
+                key={meeting.id}
+                meeting={meeting}
+                workspaceId={workspaceId}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {tasks.length === 0 ? (
         <div className="glass mt-8 rounded-3xl py-16 text-center">

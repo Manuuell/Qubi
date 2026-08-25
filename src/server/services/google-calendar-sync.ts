@@ -1,7 +1,11 @@
 import { prisma } from "@/lib/db";
 import { IssueStatus, ProjectStatus } from "@/generated/prisma/enums";
 import { taskCalendarWindow } from "@/features/task/calendar-window";
-import { getAccessToken } from "@/server/services/google-calendar";
+import {
+  getAccessToken,
+  callGoogle,
+  EVENTS_ENDPOINT,
+} from "@/server/services/google-calendar";
 
 // Replica las tareas como eventos en el Google Calendar personal de cada
 // responsable que haya conectado su cuenta.
@@ -10,9 +14,6 @@ import { getAccessToken } from "@/server/services/google-calendar";
 // calendario igual, cree, actualice o borre lo que haga falta. Así da lo mismo
 // desde qué acción se llame (cambiar fecha, reasignar, cerrar…) y repetir una
 // sincronización nunca duplica nada.
-
-const EVENTS_ENDPOINT =
-  "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 
 // Una tarea ocupa sitio en el calendario mientras esté viva, tenga alguna
 // fecha y su proyecto siga activo. En cuanto deja de cumplirse, el evento
@@ -56,34 +57,6 @@ function eventBody(task: SyncTask, baseUrl: string) {
       url: `${baseUrl}/w/${task.workspaceId}/tasks/${task.number}`,
     },
   };
-}
-
-async function callGoogle(
-  accessToken: string,
-  url: string,
-  method: "POST" | "PATCH" | "DELETE",
-  body?: unknown,
-): Promise<{ ok: boolean; status: number; id?: string }> {
-  const response = await fetch(url, {
-    method,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      ...(body ? { "Content-Type": "application/json" } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-
-  if (method === "DELETE") {
-    // 410 = ya estaba borrado en Google; para nosotros es el mismo final.
-    return {
-      ok: response.ok || response.status === 410,
-      status: response.status,
-    };
-  }
-  if (!response.ok) return { ok: false, status: response.status };
-
-  const json = (await response.json()) as { id?: string };
-  return { ok: true, status: response.status, id: json.id };
 }
 
 // Quita un evento del calendario de alguien y olvida la referencia.

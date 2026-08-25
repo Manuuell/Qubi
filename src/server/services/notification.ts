@@ -38,6 +38,40 @@ export async function notifyTaskAssigned(
   }
 }
 
+// Reunión recién creada de la que conocemos lo necesario para armar la
+// notificación.
+type MeetingForNotice = {
+  id: string;
+  workspaceId: string;
+  title: string;
+};
+
+// Notifica a cada invitado a una reunión. No notifica a quien la organizó
+// (no tiene sentido avisarse a uno mismo). No hay vista de detalle de
+// reunión en v1, así que el enlace lleva a "Mi agenda".
+export async function notifyMeetingInvited(
+  meeting: MeetingForNotice,
+  attendeeIds: string[],
+  actorId: string,
+) {
+  const recipients = attendeeIds.filter((id) => id !== actorId);
+  if (recipients.length === 0) return;
+  await prisma.notification.createMany({
+    data: recipients.map((userId) => ({
+      userId,
+      type: NotificationType.MEETING_INVITED,
+      title: "Te invitaron a una reunión",
+      body: meeting.title,
+      href: `/w/${meeting.workspaceId}/agenda`,
+      workspaceId: meeting.workspaceId,
+      actorId,
+    })),
+  });
+  for (const userId of recipients) {
+    publishToUser(userId, { type: "notification" });
+  }
+}
+
 // Notifica a los asignados de una tarea que el manager comentó/dio feedback
 // sobre sus avances.
 export async function notifyReviewFeedback(

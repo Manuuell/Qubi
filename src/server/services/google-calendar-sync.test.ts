@@ -12,7 +12,11 @@ const prismaMock = {
 vi.mock("@/lib/db", () => ({ prisma: prismaMock }));
 
 const getAccessToken = vi.fn();
-vi.mock("@/server/services/google-calendar", () => ({ getAccessToken }));
+vi.mock("@/server/services/google-calendar", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/server/services/google-calendar")>();
+  return { ...actual, getAccessToken };
+});
 
 const { syncTaskToGoogleCalendars, listTaskEvents, removeDeletedTaskEvents } =
   await import("./google-calendar-sync");
