@@ -2,10 +2,14 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { auth, signIn } from "@/auth";
+import { signIn } from "@/auth";
 import { prisma } from "@/lib/db";
 import { verifySwitchToken } from "@/lib/switch-token";
-import { addToRing, readRing, removeFromRing } from "@/server/account-ring";
+import {
+  ensureCurrentInRing,
+  readRing,
+  removeFromRing,
+} from "@/server/account-ring";
 import { getCurrentUser } from "@/lib/auth";
 import { uploadFile } from "@/lib/storage";
 import { getBaseUrl } from "@/lib/mail";
@@ -56,22 +60,6 @@ export async function updateProfileImageAction(formData: FormData) {
   await prisma.user.update({ where: { id: user.id }, data: { image: url } });
   revalidatePath("/account", "layout");
   return { url };
-}
-
-// Guarda la cuenta activa en el anillo para poder volver a ella sin contraseña.
-async function ensureCurrentInRing() {
-  const session = await auth();
-  const id = session?.user?.id;
-  if (!id) return;
-  const user = await prisma.user.findUnique({ where: { id } });
-  if (user) {
-    await addToRing({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      image: user.image,
-    });
-  }
 }
 
 // "Agregar otra cuenta": guarda la actual y va al login para entrar con otra.

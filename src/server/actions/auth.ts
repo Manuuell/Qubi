@@ -3,10 +3,14 @@
 import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import bcrypt from "bcryptjs";
-import { auth, signIn, signOut } from "@/auth";
+import { signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { removeFromRing } from "@/server/account-ring";
+import { ensureCurrentInRing } from "@/server/account-ring";
+
+// Tras iniciar sesión no se va directo a "/": se pasa por aquí para dejar la
+// cuenta en el conmutador. Ver el route handler para el porqué.
+const REMEMBER_PATH = "/api/session/remember";
 import { consumeToken } from "@/server/services/auth-token";
 import {
   sendPasswordResetEmail,
@@ -44,7 +48,7 @@ export async function loginAction(
   }
 
   try {
-    await signIn("credentials", { email, password, redirectTo: "/" });
+    await signIn("credentials", { email, password, redirectTo: REMEMBER_PATH });
   } catch (error) {
     if (error instanceof AuthError) {
       // Si las credenciales son correctas pero falta verificar el correo,
@@ -233,16 +237,19 @@ export async function googleSignInAction(formData?: FormData) {
   //
   // Salir aquí es seguro: prepareAddAccountAction ya dejó la cuenta actual en
   // el anillo, así que se puede volver a ella sin escribir la contraseña. Se
-  // usa signOut directo y no logoutAction porque ese la borra del anillo.
+  // usa signOut directo y no logoutAction porque ese redirige a /login y
+  // cortaría el viaje a Google a medias.
   if (formData?.get("add") === "1") {
     await signOut({ redirect: false });
   }
-  await signIn("google", { redirectTo: "/" });
+  await signIn("google", { redirectTo: REMEMBER_PATH });
 }
 
 export async function logoutAction() {
-  // Al cerrar sesión, esa cuenta deja de estar disponible en el conmutador.
-  const session = await auth();
-  if (session?.user?.id) await removeFromRing(session.user.id);
+  // Cerrar sesión NO olvida la cuenta: se queda en el conmutador para poder
+  // volver a ella sin escribir la contraseña. Se quita solo con la ✕ del menú
+  // (removeAccountAction), que es la acción explícita de "no me recuerdes
+  // aquí". De paso se registra por si se entró antes de que esto existiera.
+  await ensureCurrentInRing();
   await signOut({ redirectTo: "/login" });
 }

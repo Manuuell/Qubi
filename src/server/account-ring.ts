@@ -1,4 +1,6 @@
 import { cookies } from "next/headers";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/db";
 import { createSwitchToken } from "@/lib/switch-token";
 
 // "Anillo de cuentas": cookie httpOnly con las cuentas vistas en este navegador.
@@ -80,4 +82,21 @@ export async function addToRing(user: RingUser) {
 export async function removeFromRing(userId: string) {
   const entries = await readRing();
   await writeRing(entries.filter((e) => e.userId !== userId));
+}
+
+// Deja la cuenta activa en el anillo. Solo puede llamarse desde una server
+// action o un route handler: escribe cookie, y los server components no pueden.
+export async function ensureCurrentInRing() {
+  const session = await auth();
+  const id = session?.user?.id;
+  if (!id) return;
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (user) {
+    await addToRing({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      image: user.image,
+    });
+  }
 }
