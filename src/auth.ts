@@ -70,9 +70,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
     // El provider de Google solo se activa si hay credenciales configuradas.
-    ...(googleEnabled ? [Google] : []),
+    //
+    // allowDangerousEmailAccountLinking: sin esto, quien ya tenía cuenta con
+    // contraseña y pulsa "Continuar con Google" choca contra
+    // OAuthAccountNotLinked y se queda fuera. Con esto, si el correo coincide,
+    // Google queda enlazado a esa misma cuenta y puede entrar por las dos vías.
+    //
+    // El nombre asusta pero aquí el riesgo no aumenta: Google verifica el
+    // correo antes de devolverlo, así que para enlazar hay que controlar ese
+    // buzón — y quien lo controla ya puede entrar hoy con "olvidé mi
+    // contraseña". Sería peligroso con un proveedor que no verifique correos.
+    ...(googleEnabled
+      ? [Google({ allowDangerousEmailAccountLinking: true })]
+      : []),
   ],
   callbacks: {
+    // Entrar con Google prueba que el correo es suyo, que es justo lo que
+    // pedía el correo de confirmación. Si la cuenta venía sin verificar (se
+    // registró con contraseña y nunca abrió el enlace), queda verificada aquí;
+    // si no, el provider de credenciales le seguiría cerrando la puerta.
+    async signIn({ user, account }) {
+      if (account?.provider === "google" && user.id) {
+        await prisma.user.updateMany({
+          where: { id: user.id, emailVerified: null },
+          data: { emailVerified: new Date() },
+        });
+      }
+      return true;
+    },
     session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub;

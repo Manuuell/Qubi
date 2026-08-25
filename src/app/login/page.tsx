@@ -10,6 +10,21 @@ const NOTICES: Record<string, string> = {
   "reset:ok": "Contraseña actualizada. Inicia sesión con la nueva.",
 };
 
+// Auth.js devuelve aquí con ?error=... cuando el acceso con Google falla. Sin
+// esto la persona aterrizaba en el login sin explicación ninguna.
+const ERROR_NOTICES: Record<string, string> = {
+  // No debería ocurrir ya (el enlace por correo es automático), pero si algún
+  // día vuelve a saltar, al menos dice por dónde salir.
+  OAuthAccountNotLinked:
+    "Ese correo ya tiene una cuenta en Qubi. Entra con tu contraseña desde “Iniciar sesión de otra forma”.",
+  AccessDenied: "No autorizaste el acceso con Google.",
+  Configuration:
+    "El acceso con Google no está bien configurado en este servidor.",
+};
+
+const ERROR_FALLBACK =
+  "No se pudo entrar con Google. Inténtalo de nuevo o usa tu correo y contraseña.";
+
 export default async function LoginPage({
   searchParams,
 }: {
@@ -18,16 +33,17 @@ export default async function LoginPage({
     verify?: string;
     reset?: string;
     email?: string;
+    error?: string;
   }>;
 }) {
-  const { add, verify, reset, email } = await searchParams;
+  const { add, verify, reset, email, error } = await searchParams;
   const addMode = add === "1";
 
-  // La entrada por correo y el registro están ocultos: se entra con Google.
-  // Nada se ha borrado (las acciones y las rutas de recuperación siguen ahí),
-  // y /login?email=1 los vuelve a mostrar — es la salida de emergencia para
-  // quien tenga cuenta con contraseña y aún no la haya enlazado con Google.
-  const showEmailLogin = email === "1";
+  // Google es la vía principal, pero el correo y contraseña siguen ahí como
+  // alternativa: el formulario se abre desde el propio login, y /login?email=1
+  // lo deja abierto de entrada (útil para enlazar desde un correo o un aviso).
+  // Si el acceso con Google falló, se abre solo: es la salida que necesita.
+  const showEmailLogin = email === "1" || Boolean(error);
 
   // En modo "agregar cuenta" se permite el login aunque ya haya una sesión.
   const session = await auth();
@@ -43,12 +59,17 @@ export default async function LoginPage({
       ? NOTICES[`reset:${reset}`]
       : undefined;
 
+  const errorNotice = error
+    ? (ERROR_NOTICES[error] ?? ERROR_FALLBACK)
+    : undefined;
+
   return (
     <div className="bg-board bg-background flex min-h-screen flex-col items-center justify-center gap-4 p-4">
       <LoginForm
         googleEnabled={googleEnabled}
         addMode={addMode}
         notice={notice}
+        errorNotice={errorNotice}
         showEmailLogin={showEmailLogin}
       />
       {/* La tarjeta de cuentas de invitado se deja de mostrar, pero el

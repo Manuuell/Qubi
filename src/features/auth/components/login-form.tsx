@@ -40,17 +40,20 @@ export function LoginForm({
   googleEnabled,
   addMode = false,
   notice,
+  errorNotice,
   showEmailLogin = false,
 }: {
   googleEnabled: boolean;
   addMode?: boolean;
   notice?: string;
-  // Entrar con correo y registrarse están ocultos: se entra con Google. No se
-  // ha borrado nada —las acciones, el registro y la recuperación de contraseña
-  // siguen ahí—, solo deja de pintarse.
+  // Fallo al entrar con Google (viene de ?error=... en la URL).
+  errorNotice?: string;
+  // Abre el formulario de correo de entrada, en vez de dejarlo plegado tras
+  // el enlace de "Iniciar sesión de otra forma".
   showEmailLogin?: boolean;
 }) {
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [emailOpen, setEmailOpen] = useState(showEmailLogin);
   const [loginState, loginSubmit, loginPending] = useActionState(loginAction, {
     error: undefined,
   });
@@ -61,9 +64,9 @@ export function LoginForm({
   const [resendInfo, setResendInfo] = useState<string | null>(null);
   const [resending, startResend] = useTransition();
 
-  // Sin Google configurado se muestra igual: dejar la puerta cerrada sin
+  // Sin Google configurado se muestra siempre: dejar la puerta cerrada sin
   // llave sería peor que enseñar un formulario de más.
-  const emailVisible = showEmailLogin || !googleEnabled;
+  const emailVisible = emailOpen || !googleEnabled;
 
   const isLogin = mode === "login";
   const state = isLogin ? loginState : regState;
@@ -99,6 +102,12 @@ export function LoginForm({
         </p>
       )}
 
+      {errorNotice && (
+        <p className="bg-destructive/10 text-destructive rounded-2xl px-3 py-2 text-center text-sm">
+          {errorNotice}
+        </p>
+      )}
+
       {addMode && (
         <div className="bg-muted/50 text-muted-foreground rounded-2xl border px-3 py-2 text-center text-xs">
           Tu sesión actual sigue abierta. Podrás cambiar entre cuentas desde el
@@ -124,12 +133,22 @@ export function LoginForm({
                   Continuar con Google
                 </Button>
               </form>
-              {emailVisible && (
+              {emailVisible ? (
                 <div className="relative text-center">
                   <span className="bg-background text-muted-foreground px-2 text-xs">
                     o con tu email
                   </span>
                 </div>
+              ) : (
+                // Alternativa discreta para quien tiene cuenta con contraseña
+                // de antes de que Google fuera la vía principal.
+                <button
+                  type="button"
+                  onClick={() => setEmailOpen(true)}
+                  className="text-muted-foreground hover:text-foreground w-full text-center text-xs underline"
+                >
+                  Iniciar sesión de otra forma
+                </button>
               )}
             </>
           )}
