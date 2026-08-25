@@ -9,9 +9,10 @@ import {
   MoreHorizontal,
   Plus,
   UserRound,
+  UserRoundX,
   X,
 } from "lucide-react";
-import { logoutAction } from "@/server/actions/auth";
+import { logoutAction, logoutAndForgetAction } from "@/server/actions/auth";
 import {
   prepareAddAccountAction,
   removeAccountAction,
@@ -162,6 +163,18 @@ export function AccountMenu({
               >
                 <LogOut className="size-4" />
                 Cerrar sesión
+              </button>
+            </form>
+            {/* Salida completa: cerrar sesión deja la cuenta en el conmutador
+                a propósito, así que en un equipo prestado hace falta una
+                forma de irse sin dejarla a un clic del siguiente. */}
+            <form action={logoutAndForgetAction}>
+              <button
+                type="submit"
+                className="text-muted-foreground hover:bg-accent hover:text-destructive transition-ios flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs"
+              >
+                <UserRoundX className="size-3.5" />
+                Cerrar sesión y olvidarla
               </button>
             </form>
           </div>

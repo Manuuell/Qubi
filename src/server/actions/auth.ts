@@ -3,10 +3,10 @@
 import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import bcrypt from "bcryptjs";
-import { signIn, signOut } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { ensureCurrentInRing } from "@/server/account-ring";
+import { ensureCurrentInRing, removeFromRing } from "@/server/account-ring";
 
 // Tras iniciar sesión no se va directo a "/": se pasa por aquí para dejar la
 // cuenta en el conmutador. Ver el route handler para el porqué.
@@ -247,9 +247,18 @@ export async function googleSignInAction(formData?: FormData) {
 
 export async function logoutAction() {
   // Cerrar sesión NO olvida la cuenta: se queda en el conmutador para poder
-  // volver a ella sin escribir la contraseña. Se quita solo con la ✕ del menú
-  // (removeAccountAction), que es la acción explícita de "no me recuerdes
-  // aquí". De paso se registra por si se entró antes de que esto existiera.
+  // volver a ella sin escribir la contraseña. Se quita con la ✕ del menú o
+  // con logoutAndForgetAction. De paso se registra por si se entró antes de
+  // que el login empezara a hacerlo.
   await ensureCurrentInRing();
+  await signOut({ redirectTo: "/login" });
+}
+
+// Salida completa para un equipo prestado o compartido: cierra sesión y además
+// quita la cuenta del conmutador, para no dejarla a un clic de quien entre
+// después con otra cuenta de este mismo navegador.
+export async function logoutAndForgetAction() {
+  const session = await auth();
+  if (session?.user?.id) await removeFromRing(session.user.id);
   await signOut({ redirectTo: "/login" });
 }
