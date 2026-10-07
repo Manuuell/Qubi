@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { UserPreview } from "@/features/workspace/components/user-preview";
+import { InviteLinkCard } from "@/features/workspace/components/invite-link-card";
 import {
   Select,
   SelectContent,
@@ -49,12 +50,16 @@ const ASSIGNABLE_ROLES: WorkspaceRole[] = [
 
 export function MembersManager({
   workspaceId,
+  workspaceName,
+  inviteUrl,
   currentUserId,
   currentUserRole,
   members,
   invites,
 }: {
   workspaceId: string;
+  workspaceName: string;
+  inviteUrl: string | null;
   currentUserId: string;
   currentUserRole: WorkspaceRole;
   members: Member[];
@@ -111,6 +116,14 @@ export function MembersManager({
           </div>
           {error && <p className="text-destructive text-sm">{error}</p>}
         </form>
+      )}
+
+      {isAdmin && (
+        <InviteLinkCard
+          workspaceId={workspaceId}
+          workspaceName={workspaceName}
+          inviteUrl={inviteUrl}
+        />
       )}
 
       {invites.length > 0 && (

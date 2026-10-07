@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { joinPath } from "@/lib/join-token";
 import { LoginForm } from "@/features/auth/components/login-form";
+import { readPendingJoin } from "@/server/pending-join";
+import { findWorkspaceByInviteToken } from "@/server/services/invite-link";
 
 export const dynamic = "force-dynamic";
 
@@ -45,9 +48,17 @@ export default async function LoginPage({
   // Si el acceso con Google falló, se abre solo: es la salida que necesita.
   const showEmailLogin = email === "1" || Boolean(error);
 
+  const pendingJoin = await readPendingJoin();
+
   // En modo "agregar cuenta" se permite el login aunque ya haya una sesión.
   const session = await auth();
-  if (session?.user && !addMode) redirect("/");
+  if (session?.user && !addMode) {
+    redirect(pendingJoin ? joinPath(pendingJoin) : "/");
+  }
+
+  const joinWs = pendingJoin
+    ? await findWorkspaceByInviteToken(pendingJoin)
+    : null;
 
   const googleEnabled = !!(
     process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
@@ -71,6 +82,8 @@ export default async function LoginPage({
         notice={notice}
         errorNotice={errorNotice}
         showEmailLogin={showEmailLogin}
+        joinWorkspaceName={joinWs?.name}
+        cancelHref={pendingJoin ? joinPath(pendingJoin) : "/"}
       />
       {/* La tarjeta de cuentas de invitado se deja de mostrar, pero el
           componente (guest-accounts-card.tsx), sus credenciales y el seed que

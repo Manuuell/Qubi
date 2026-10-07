@@ -6,7 +6,13 @@ import bcrypt from "bcryptjs";
 import { auth, signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { isValidJoinToken } from "@/lib/join-token";
 import { ensureCurrentInRing, removeFromRing } from "@/server/account-ring";
+import {
+  clearPendingJoin,
+  readPendingJoin,
+  setPendingJoin,
+} from "@/server/pending-join";
 
 // Tras iniciar sesión no se va directo a "/": se pasa por aquí para dejar la
 // cuenta en el conmutador. Ver el route handler para el porqué.
@@ -109,7 +115,7 @@ export async function registerAction(
   });
 
   // No se inicia sesión: primero hay que confirmar el correo.
-  await sendVerificationEmail(email);
+  await sendVerificationEmail(email, { joinToken: await readPendingJoin() });
   return {
     info: "Cuenta creada. Te enviamos un correo para confirmar tu dirección; ábrelo antes de entrar.",
   };
@@ -127,7 +133,9 @@ export async function resendVerificationAction(input: {
   if (rateLimit.ok) {
     const user = await prisma.user.findUnique({ where: { email } });
     if (user && !user.emailVerified) {
-      await sendVerificationEmail(email);
+      await sendVerificationEmail(email, {
+        joinToken: await readPendingJoin(),
+      });
     }
   }
   // Respuesta genérica para no revelar si la cuenta existe (ni si se topó
@@ -138,6 +146,11 @@ export async function resendVerificationAction(input: {
 }
 
 export async function verifyEmailAction(formData: FormData) {
+  // El correo suele abrirse en otro navegador, donde no existe la cookie que
+  // dejó el registro. Restauramos primero el destino validado del propio enlace.
+  const join = String(formData.get("join") ?? "");
+  if (isValidJoinToken(join)) await setPendingJoin(join);
+
   const token = String(formData.get("token") ?? "");
   const email = await consumeToken("verify", token);
   if (!email) redirect("/login?verify=invalid");
@@ -241,6 +254,14 @@ export async function googleSignInAction(formData?: FormData) {
   // cortaría el viaje a Google a medias.
   if (formData?.get("add") === "1") {
     await signOut({ redirect: false });
+    // Sin prompt, Google reutiliza automáticamente la única cuenta abierta en
+    // el navegador y el usuario no puede elegir con cuál quiere continuar.
+    await signIn(
+      "google",
+      { redirectTo: REMEMBER_PATH },
+      { prompt: "select_account" },
+    );
+    return;
   }
   await signIn("google", { redirectTo: REMEMBER_PATH });
 }
@@ -251,6 +272,7 @@ export async function logoutAction() {
   // con logoutAndForgetAction. De paso se registra por si se entró antes de
   // que el login empezara a hacerlo.
   await ensureCurrentInRing();
+  await clearPendingJoin();
   await signOut({ redirectTo: "/login" });
 }
 
@@ -260,5 +282,6 @@ export async function logoutAction() {
 export async function logoutAndForgetAction() {
   const session = await auth();
   if (session?.user?.id) await removeFromRing(session.user.id);
+  await clearPendingJoin();
   await signOut({ redirectTo: "/login" });
 }

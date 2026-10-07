@@ -55,6 +55,7 @@ enum NotificationType {
   TASK_REOPENED // el manager devolvió tu tarea a pendiente o en curso
   MENTIONED // te mencionaron con @ en un comentario o mensaje de chat
   MEETING_INVITED // te invitaron a una reunión
+  MEMBER_JOINED // alguien se unió al espacio con el enlace de invitación
 }
 
 // Tipo de tarea (para clasificar y filtrar el trabajo).
@@ -262,13 +263,16 @@ model VerificationToken {
 // ── Workspaces (espacios de trabajo) ─────────────────────────────────────
 
 model Workspace {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  icon      String?
-  ownerId   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  icon            String?
+  // null = enlace desactivado; regenerarlo reemplaza el token. Da acceso como
+  // Miembro, por eso nunca se expone salvo a propietarios y administradores.
+  inviteLinkToken String?  @unique
+  ownerId         String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   owner         User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members       WorkspaceMember[]

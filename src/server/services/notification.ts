@@ -1,6 +1,43 @@
 import { prisma } from "@/lib/db";
-import { IssueStatus, NotificationType } from "@/generated/prisma/enums";
+import {
+  IssueStatus,
+  NotificationType,
+  WorkspaceRole,
+} from "@/generated/prisma/enums";
 import { publishToUser } from "@/server/lib/event-bus";
+
+// Avisa a quienes administran el espacio cuando alguien entra con el enlace.
+// Se excluye al recién llegado por si ya tenía un rol administrativo en algún
+// flujo concurrente o histórico: nadie necesita notificarse a sí mismo.
+export async function notifyMemberJoined(
+  workspace: { id: string; name: string },
+  joiner: { id: string; name: string | null; email: string },
+) {
+  const recipients = await prisma.workspaceMember.findMany({
+    where: {
+      workspaceId: workspace.id,
+      role: { in: [WorkspaceRole.OWNER, WorkspaceRole.ADMIN] },
+      userId: { not: joiner.id },
+    },
+    select: { userId: true },
+  });
+  if (recipients.length === 0) return;
+
+  await prisma.notification.createMany({
+    data: recipients.map(({ userId }) => ({
+      userId,
+      type: NotificationType.MEMBER_JOINED,
+      title: `${joiner.name || joiner.email} se unió a ${workspace.name}`,
+      body: "Entró con el enlace de invitación",
+      href: `/w/${workspace.id}/members`,
+      workspaceId: workspace.id,
+      actorId: joiner.id,
+    })),
+  });
+  for (const { userId } of recipients) {
+    publishToUser(userId, { type: "notification" });
+  }
+}
 
 // Tarea recién actualizada de la que conocemos los campos necesarios para armar
 // notificaciones (evita una segunda consulta).

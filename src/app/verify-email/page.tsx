@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { isValidJoinToken } from "@/lib/join-token";
 import { verifyEmailAction } from "@/server/actions/auth";
 
 export const dynamic = "force-dynamic";
@@ -7,9 +8,9 @@ export const dynamic = "force-dynamic";
 export default async function VerifyEmailPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string; join?: string }>;
 }) {
-  const { token } = await searchParams;
+  const { token, join } = await searchParams;
 
   return (
     <div className="bg-board bg-background flex min-h-screen items-center justify-center p-4">
@@ -25,6 +26,9 @@ export default async function VerifyEmailPage({
             </p>
             <form action={verifyEmailAction}>
               <input type="hidden" name="token" value={token} />
+              {isValidJoinToken(join) && (
+                <input type="hidden" name="join" value={join} />
+              )}
               <Button type="submit" className="w-full">
                 Confirmar mi correo
               </Button>

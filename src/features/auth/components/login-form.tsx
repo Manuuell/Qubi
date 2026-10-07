@@ -42,6 +42,8 @@ export function LoginForm({
   notice,
   errorNotice,
   showEmailLogin = false,
+  joinWorkspaceName,
+  cancelHref = "/",
 }: {
   googleEnabled: boolean;
   addMode?: boolean;
@@ -51,6 +53,8 @@ export function LoginForm({
   // Abre el formulario de correo de entrada, en vez de dejarlo plegado tras
   // el enlace de "Iniciar sesión de otra forma".
   showEmailLogin?: boolean;
+  joinWorkspaceName?: string;
+  cancelHref?: string;
 }) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [emailOpen, setEmailOpen] = useState(showEmailLogin);
@@ -96,6 +100,23 @@ export function LoginForm({
         </p>
       </div>
 
+      {joinWorkspaceName && (
+        <p className="bg-primary/10 rounded-2xl px-3 py-2 text-center text-sm">
+          {addMode ? (
+            <>
+              Entra con la cuenta con la que quieres unirte a{" "}
+              <span className="font-medium">{joinWorkspaceName}</span>.
+            </>
+          ) : (
+            <>
+              Te invitaron a unirte a{" "}
+              <span className="font-medium">{joinWorkspaceName}</span>. Inicia
+              sesión o crea tu cuenta para continuar.
+            </>
+          )}
+        </p>
+      )}
+
       {notice && (
         <p className="bg-muted/50 rounded-2xl border px-3 py-2 text-center text-sm">
           {notice}
@@ -112,7 +133,7 @@ export function LoginForm({
         <div className="bg-muted/50 text-muted-foreground rounded-2xl border px-3 py-2 text-center text-xs">
           Tu sesión actual sigue abierta. Podrás cambiar entre cuentas desde el
           menú.{" "}
-          <Link href="/" className="text-foreground underline">
+          <Link href={cancelHref} className="text-foreground underline">
             Cancelar
           </Link>
         </div>

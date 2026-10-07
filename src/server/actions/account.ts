@@ -13,6 +13,7 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { uploadFile } from "@/lib/storage";
 import { getBaseUrl } from "@/lib/mail";
+import { clearPendingJoin } from "@/server/pending-join";
 import {
   calendarFeedUrl,
   getOrCreateCalendarToken,
@@ -64,12 +65,17 @@ export async function updateProfileImageAction(formData: FormData) {
 
 // "Agregar otra cuenta": guarda la actual y va al login para entrar con otra.
 export async function prepareAddAccountAction() {
+  // Estos cambios de cuenta no pasan por /api/session/remember; limpiamos la
+  // unión para no mostrar después su banner en un "Agregar cuenta" sin relación.
+  await clearPendingJoin();
   await ensureCurrentInRing();
   redirect("/login?add=1");
 }
 
 // Cambia a una cuenta ya recordada en este navegador, sin pedir contraseña.
 export async function switchToAccountAction(input: { userId: string }) {
+  // Igual que el alta manual de otra cuenta, este flujo no pasa por remember.
+  await clearPendingJoin();
   const ring = await readRing();
   const entry = ring.find((e) => e.userId === input.userId);
   if (!entry || !verifySwitchToken(entry.token)) {

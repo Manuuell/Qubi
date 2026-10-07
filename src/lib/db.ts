@@ -11,12 +11,17 @@ if (!connectionString) {
 // Reutilizamos una sola instancia en desarrollo para no agotar conexiones
 // con el hot-reload de Next.
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma: ReturnType<typeof createPrismaClient> | undefined;
 };
 
 function createPrismaClient() {
   const adapter = new PrismaPg({ connectionString });
-  return new PrismaClient({ adapter });
+  return new PrismaClient({
+    adapter,
+    // El enlace concede acceso como Miembro: se oculta por defecto para que
+    // ninguna consulta amplia lo entregue por accidente a quien no sea admin.
+    omit: { workspace: { inviteLinkToken: true } },
+  });
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();

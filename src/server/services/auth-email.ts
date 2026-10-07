@@ -1,4 +1,5 @@
 import { getBaseUrl, sendMail } from "@/lib/mail";
+import { isValidJoinToken } from "@/lib/join-token";
 import { issueToken } from "@/server/services/auth-token";
 
 // Maquetación HTML mínima con estilos en línea (lo más compatible entre clientes
@@ -21,9 +22,17 @@ function emailLayout(opts: {
   </div>`;
 }
 
-export async function sendVerificationEmail(email: string) {
+export async function sendVerificationEmail(
+  email: string,
+  opts: { joinToken?: string | null } = {},
+) {
   const token = await issueToken("verify", email);
-  const link = `${await getBaseUrl()}/verify-email?token=${token}`;
+  // El correo suele abrirse en otro navegador, sin la cookie del registro; el
+  // token de unión validado permite reconstruir allí el único destino admitido.
+  const join = isValidJoinToken(opts.joinToken)
+    ? `&join=${opts.joinToken}`
+    : "";
+  const link = `${await getBaseUrl()}/verify-email?token=${token}${join}`;
   await sendMail({
     to: email,
     subject: "Confirma tu correo en Qubi",
